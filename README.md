@@ -17,3 +17,11 @@ Initialize the configuration, including the defconfig and this external director
 And compile:
 
 	make
+
+## Docker
+
+Build the Images
+	docker build -t buildroot-env --build-arg HOST_USERNAME=$(whoami) --build-arg HOST_UID=$(id -u) --build-arg HOST_GID=$(id -g) .
+
+Rin it
+	docker run -it -v $(pwd):/home/$(whoami)/buildroot buildroot-env
