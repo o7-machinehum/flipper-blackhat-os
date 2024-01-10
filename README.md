@@ -12,7 +12,7 @@ Change to the top-level Buildroot directory:
 
 Initialize the configuration, including the defconfig and this external directory:
 
-	make BR2_EXTERNAL=$PWD/../ sipeed_lichee_rv_defconfig
+	make BR2_EXTERNAL=$PWD/../ flipper_blackhat_defconfig
 
 And compile:
 
