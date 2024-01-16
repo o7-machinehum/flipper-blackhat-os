@@ -1,0 +1,24 @@
+#!/bin/sh
+#
+# Probe in the wifi driver
+#
+
+case "$1" in
+  start)
+        printf "Probing Wifi driver"
+        modprobe 8723ds
+        [ $? = 0 ] && echo "OK" || echo "FAIL"
+        ;;
+  stop)
+        printf "Unprobing Wifi driver"
+        ;;
+  restart|reload)
+        "$0" stop
+        "$0" start
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $?
