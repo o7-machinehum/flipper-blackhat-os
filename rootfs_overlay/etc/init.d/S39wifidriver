@@ -5,8 +5,11 @@
 
 case "$1" in
   start)
-        printf "Probing Wifi driver"
-        modprobe 8723ds
+        printf "Probing rtw88_8723ds: "
+        modprobe rtw88_8723ds.ko
+        [ $? = 0 ] && echo "OK" || echo "FAIL"
+        printf "Probing rtw88_8821cu: "
+        modprobe rtw88_8821cu.ko
         [ $? = 0 ] && echo "OK" || echo "FAIL"
         ;;
   stop)
