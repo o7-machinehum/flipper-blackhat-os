@@ -8,9 +8,11 @@ mkdir -p /run/network
 
 case "$1" in
   start)
-    printf "Starting network: "
-    # dhclient
-    # wpa_supplicant -B -c /etc/wpa_supplicant.conf -i wlan0 
+    printf "Starting AP (wlan1): "
+    hostapd /etc/hostapd.conf -B
+    [ $? = 0 ] && echo "OK" || echo "FAIL"
+    printf "Conencting to AP (wlan0): "
+    wpa_supplicant -B -c /etc/wpa_supplicant.conf -i wlan0 
     [ $? = 0 ] && echo "OK" || echo "FAIL"
     ;;
   stop)
