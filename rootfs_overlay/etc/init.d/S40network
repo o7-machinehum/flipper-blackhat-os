@@ -8,16 +8,17 @@ mkdir -p /run/network
 
 case "$1" in
   start)
-    printf "Starting AP (wlan1): "
-    hostapd /etc/hostapd.conf -B
+    printf "Setting IP Address (wlan1): "
+    ifconfig wlan1 up 192.168.2.1 netmask 255.255.255.0
     [ $? = 0 ] && echo "OK" || echo "FAIL"
+
     printf "Conencting to AP (wlan0): "
     wpa_supplicant -B -c /etc/wpa_supplicant.conf -i wlan0 
     [ $? = 0 ] && echo "OK" || echo "FAIL"
     ;;
   stop)
     printf "Stopping network: "
-    kill $(pidof dhclient)
+    kill $(pidof wpa_supplicant)
     [ $? = 0 ] && echo "OK" || echo "FAIL"
     ;;
   restart|reload)
