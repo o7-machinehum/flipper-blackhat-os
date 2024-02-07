@@ -1,8 +1,8 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/riscv 6.6.1 Kernel Configuration
+# Linux/riscv 6.6.14 Kernel Configuration
 #
-CONFIG_CC_VERSION_TEXT="riscv64-buildroot-linux-gnu-gcc.br_real (Buildroot 2023.11-rc1-25-g3da62675d7) 12.3.0"
+CONFIG_CC_VERSION_TEXT="riscv64-buildroot-linux-gnu-gcc.br_real (Buildroot 2023.11-755-gd932f84d9f) 12.3.0"
 CONFIG_CC_IS_GCC=y
 CONFIG_GCC_VERSION=120300
 CONFIG_CLANG_VERSION=0
@@ -313,6 +313,7 @@ CONFIG_SCHED_HRTICK=y
 CONFIG_RISCV_SBI_V01=y
 CONFIG_ARCH_SUPPORTS_KEXEC=y
 CONFIG_ARCH_SUPPORTS_KEXEC_FILE=y
+CONFIG_ARCH_SUPPORTS_KEXEC_PURGATORY=y
 CONFIG_ARCH_SUPPORTS_CRASH_DUMP=y
 CONFIG_COMPAT=y
 # CONFIG_RELOCATABLE is not set
@@ -1096,7 +1097,25 @@ CONFIG_SCSI_SCAN_ASYNC=y
 # CONFIG_TARGET_CORE is not set
 CONFIG_NETDEVICES=y
 CONFIG_MII=y
-# CONFIG_NET_CORE is not set
+CONFIG_NET_CORE=y
+# CONFIG_BONDING is not set
+# CONFIG_DUMMY is not set
+# CONFIG_WIREGUARD is not set
+# CONFIG_EQUALIZER is not set
+# CONFIG_NET_TEAM is not set
+# CONFIG_MACVLAN is not set
+# CONFIG_IPVLAN is not set
+# CONFIG_VXLAN is not set
+# CONFIG_GENEVE is not set
+# CONFIG_BAREUDP is not set
+# CONFIG_GTP is not set
+# CONFIG_MACSEC is not set
+# CONFIG_NETCONSOLE is not set
+CONFIG_TUN=y
+# CONFIG_TUN_VNET_CROSS_LE is not set
+# CONFIG_VETH is not set
+# CONFIG_VIRTIO_NET is not set
+# CONFIG_NLMON is not set
 CONFIG_ETHERNET=y
 # CONFIG_NET_VENDOR_ALACRITECH is not set
 CONFIG_NET_VENDOR_ALLWINNER=y
@@ -5628,8 +5647,6 @@ CONFIG_STACKTRACE=y
 # CONFIG_DEBUG_NOTIFIERS is not set
 # CONFIG_DEBUG_MAPLE_TREE is not set
 # end of Debug kernel data structures
-
-# CONFIG_DEBUG_CREDENTIALS is not set
 
 #
 # RCU Debugging
