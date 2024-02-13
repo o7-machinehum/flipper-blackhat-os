@@ -1,0 +1,4 @@
+config BR2_PACKAGE_BLACKHAT
+    bool "flipper-blackhat"
+    help
+        Script for working with the flipper blackhat.
