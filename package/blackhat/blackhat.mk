@@ -10,6 +10,7 @@ endef
 
 define BLACKHAT_INSTALL_TARGET_CMDS
     $(INSTALL) -D -m 0755 $(@D)/blackhat.sh $(TARGET_DIR)/usr/bin/bh
+    mv (@D)/blackhat.conf $(TARGET_DIR)/etc/blackhat.conf
 endef
 
 $(eval $(generic-package))
