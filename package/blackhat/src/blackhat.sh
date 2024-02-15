@@ -38,12 +38,14 @@ function evil_twin() {
 	ifconfig at0 up
 	ifconfig at0 192.168.1.1 netmask 255.255.255.0
 	route add -net 192.168.1.0 netmask 255.255.255.0 gw 192.168.1.1
+	modprobe ip_tables
 	iptables -P FORWARD ACCEPT
 	iptables -t nat -A POSTROUTING -o $RADIO_AP -j MASQUERADE
 	echo 1 > /proc/sys/net/ipv4/ip_forward
 
 	# sed -i "/^interface=/c\interface=$RADIO_AP" /etc/dnsmasq.conf
-	dnsmasq -C /etc/dnsmasq.conf -d
+	kill $(pidof dnsmasq)
+	dnsmasq -C /etc/dnsmasq.conf -d 2>&1 >> $LOG_F & 
 }
 
 function set() {
