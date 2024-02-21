@@ -32,7 +32,8 @@ function connect_wifi() {
 	wpa_supplicant -B -i $1 -c <(wpa_passphrase $SSID $PASS)
 }
 
-function evil_twin() {
+## Havn't been able to get this working
+function evil_twin_airbase() {
 	ip link set $RADIO_AP down
 	iw dev $RADIO_AP set monitor none
 	airmon-ng start $RADIO_AP
@@ -51,6 +52,20 @@ function evil_twin() {
 	# sed -i "/^interface=/c\interface=$RADIO_AP" /etc/dnsmasq.conf
 	kill $(pidof dnsmasq)
 	dnsmasq -C /etc/dnsmasq.conf -d 2>&1 >> $LOG_F & 
+}
+
+function evil_twin() {
+	ip link set $RADIO_AP down
+	ip addr add 192.168.99.1/24 dev $RADIO_AP
+	iptables --table nat --append POSTROUTING --out-interface $RADIO_CLIENT -j MASQUERADE
+	iptables --append FORWARD --in-interface $RADIO_AP -j ACCEPT
+	echo 1 > /proc/sys/net/ipv4/ip_forward
+
+	hostapd /etc/hostapd.conf &
+	connect_wifi $RADIO_CLIENT
+
+	kill $(pidof dnsmasq)
+	dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F & 
 }
 
 function set() {
@@ -72,6 +87,7 @@ function wifi() {
 			iw $RADIO_CLIENT scan | grep "SSID:"
 			;;
 		connect)
+			ip link set $RADIO_CLIENT up
 			connect_wifi $RADIO_CLIENT
 			;;
 		*)
@@ -93,6 +109,9 @@ case "$subcommand" in
 		;;
 	evil_twin)
 		evil_twin
+		;;
+	evil_twin_airbase)
+		evil_twin_airbase
 		;;
 	help)
 		print_help
