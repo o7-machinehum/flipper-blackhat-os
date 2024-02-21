@@ -19,39 +19,19 @@ source $CONFIG_F
 rm $LOG_F 2>/dev/null
 
 function print_help() {
-	echo "Usage: bh [subcommand] [options]"
-	echo "Subcommands:"
-	echo "  list_wifi       List _2G_ WiFi Networks"
-	echo "  connect_wifi    Connect to a WiFi network"
-	echo "Options for connect_wifi:"
-	echo "  -p    Specify the password for the WiFi network"
-	echo "  -s    Specify the SSID for the WiFi network"
+	echo "Usage (eg): bh set SSID MySSID"
+	echo "Commands:"
+	echo "  set"
+	echo "    SSID       Set SSID of WiFi network to connect to"
+	echo "    PASS       Set password for WiFi network: SSID"
+	echo "    AP_SSID    Set SSID of WiFi network you're creating"
+	echo "  connect_wifi Connect to a WiFi network"
+	echo "  evil_twin    Enable the evil twin AP"
+	echo "  get          Get currently set parameters"
 }
 
 function connect_wifi() {
 	wpa_supplicant -B -i $1 -c <(wpa_passphrase $SSID $PASS)
-}
-
-## Havn't been able to get this working
-function evil_twin_airbase() {
-	ip link set $RADIO_AP down
-	iw dev $RADIO_AP set monitor none
-	airmon-ng start $RADIO_AP
-	airbase-ng -e $AP_SSID -c 11 $RADIO_AP 2>&1 > $LOG_F &
-	while ! grep -q "Access Point with BSSID" $LOG_F; do
-		sleep 1
-	done
-	connect_wifi $RADIO_CLIENT
-	ip link set at0 up
-	ip addr add 192.168.99.1/24 dev at0
-	route add -net 192.168.99.0 netmask 255.255.255.0 gw 192.168.99.1
-	iptables -P FORWARD ACCEPT
-	iptables -t nat -A POSTROUTING -o $RADIO_CLIENT -j MASQUERADE
-	echo 1 > /proc/sys/net/ipv4/ip_forward
-
-	# sed -i "/^interface=/c\interface=$RADIO_AP" /etc/dnsmasq.conf
-	kill $(pidof dnsmasq)
-	dnsmasq -C /etc/dnsmasq.conf -d 2>&1 >> $LOG_F & 
 }
 
 function evil_twin() {
@@ -73,8 +53,11 @@ function set() {
 		SSID)
 			sed -i "/^SSID=/c\SSID=$2" ${CONFIG_F}	
 			;;
-		AP)
-			sed -i "/^AP=/c\AP=$2" ${CONFIG_F}	
+		PASS)
+			sed -i "/^PASS=/c\PASS=$2" ${CONFIG_F}	
+			;;
+		AP_SSID)
+			sed -i "/^AP_SSID=/c\AP_SSID=$2" ${CONFIG_F}	
 			;;
 		*)
 			print_help
@@ -95,7 +78,6 @@ function wifi() {
 	esac
 }
 
-
 subcommand=$1; shift  
 case "$subcommand" in
 	set)
@@ -109,9 +91,6 @@ case "$subcommand" in
 		;;
 	evil_twin)
 		evil_twin
-		;;
-	evil_twin_airbase)
-		evil_twin_airbase
 		;;
 	help)
 		print_help
