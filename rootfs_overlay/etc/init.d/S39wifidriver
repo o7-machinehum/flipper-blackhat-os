@@ -8,8 +8,8 @@ case "$1" in
         printf "Probing rtw88_8723ds: "
         modprobe rtw88_8723ds
         [ $? = 0 ] && echo "OK" || echo "FAIL"
-        printf "Probing rtw88_8723ds: "
-        modprobe rtw88_8723ds
+        printf "Probing rtw88_8723du: "
+        modprobe rtw88_8723du
         [ $? = 0 ] && echo "OK" || echo "FAIL"
         ;;
   stop)
