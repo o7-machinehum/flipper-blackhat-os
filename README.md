@@ -1,4 +1,4 @@
-# Sipeed Lichee RV
+# Flipper Blackhat OS
 
 ## Build
 
