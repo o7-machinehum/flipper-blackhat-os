@@ -12,7 +12,7 @@ Change to the top-level Buildroot directory:
 
 Initialize the configuration, including the defconfig and this external directory:
 
-	make BR2_EXTERNAL=$PWD/../ flipper_blackhat_defconfig
+	make BR2_EXTERNAL=$PWD/../ flipper_blackhat_a33_defconfig
 
 And compile:
 
