@@ -43,6 +43,7 @@
 
 /dts-v1/;
 #include "sun8i-a33.dtsi"
+#include "sunxi-common-regulators.dtsi"
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
@@ -82,7 +83,7 @@
 };
 
 &mmc0 {
-	vmmc-supply = <&reg_dcdc1>;
+	vmmc_supply = <&reg_vcc3v3>;
 	bus-width = <4>;
 	cd-gpios = <&pio 1 4 GPIO_ACTIVE_LOW>; /* PB4 */
 	status = "okay";
@@ -113,79 +114,6 @@
 
 &battery_power_supply {
 	status = "okay";
-};
-
-&reg_aldo1 {
-	regulator-always-on;
-	regulator-min-microvolt = <3300000>;
-	regulator-max-microvolt = <3300000>;
-	regulator-name = "vcc-io";
-};
-
-&reg_aldo2 {
-	regulator-always-on;
-	regulator-min-microvolt = <2350000>;
-	regulator-max-microvolt = <2650000>;
-	regulator-name = "vdd-dll";
-};
-
-&reg_aldo3 {
-	regulator-always-on;
-	regulator-min-microvolt = <3300000>;
-	regulator-max-microvolt = <3300000>;
-	regulator-name = "vcc-avcc";
-};
-
-&reg_dc1sw {
-	regulator-name = "vcc-lcd";
-};
-
-&reg_dc5ldo {
-	regulator-always-on;
-	regulator-min-microvolt = <900000>;
-	regulator-max-microvolt = <1400000>;
-	regulator-name = "vdd-cpus";
-};
-
-&reg_dcdc1 {
-	regulator-always-on;
-	regulator-min-microvolt = <3300000>;
-	regulator-max-microvolt = <3300000>;
-	regulator-name = "vcc-3v3";
-};
-
-&reg_dcdc2 {
-	regulator-always-on;
-	regulator-min-microvolt = <900000>;
-	regulator-max-microvolt = <1400000>;
-	regulator-name = "vdd-sys";
-};
-
-&reg_dcdc3 {
-	regulator-always-on;
-	regulator-min-microvolt = <900000>;
-	regulator-max-microvolt = <1400000>;
-	regulator-name = "vdd-cpu";
-};
-
-&reg_dcdc5 {
-	regulator-always-on;
-	regulator-min-microvolt = <1500000>;
-	regulator-max-microvolt = <1500000>;
-	regulator-name = "vcc-dram";
-};
-
-&reg_drivevbus {
-	regulator-name = "usb0-vbus";
-	status = "okay";
-};
-
-&reg_rtc_ldo {
-	regulator-name = "vcc-rtc";
-};
-
-&simplefb_lcd {
-	vcc-lcd-supply = <&reg_dc1sw>;
 };
 
 &sound {
