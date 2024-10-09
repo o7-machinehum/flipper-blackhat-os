@@ -17,3 +17,7 @@ Initialize the configuration, including the defconfig and this external director
 And compile:
 
 	make
+
+## TODO
+- [x] Linux autologin
+- [ ] Disable uboot option to cancel boot
