@@ -20,4 +20,4 @@ And compile:
 
 ## TODO
 - [x] Linux autologin
-- [ ] Disable uboot option to cancel boot
+- [x] Disable uboot option to cancel boot
