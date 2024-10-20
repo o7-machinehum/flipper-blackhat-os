@@ -84,10 +84,6 @@
 	status = "okay";
 };
 
-&ehci0 {
-	status = "okay";
-};
-
 &reg_vcc3v3 {
     status = "okay";
 };
@@ -156,7 +152,18 @@
 	status = "okay";
 };
 
+&usbphy {
+	usb0_vbus-supply = <&reg_vcc5v0>;
+	usb1_vbus-supply = <&reg_vcc5v0>;
+    status = "okay";
+};
+
 &usb_otg {
-	dr_mode = "otg";
+	dr_mode = "host";
 	status = "okay";
 };
+
+&ehci0 {
+	status = "okay";
+};
+
