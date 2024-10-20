@@ -5,15 +5,18 @@ CONFIG_F=blackhat.conf
 if test -f $CONFIG_F; then
 	CONFIG_F=$(pwd)/$CONFIG_F
 	LOG_F=blackhat.log
-	echo "Loaded Config From: $CONFIG_F"
+elif test -f /mnt/$CONFIG_F; then 
+	CONFIG_F=$/mnt/$CONFIG_F
+	LOG_F=/mnt/blackhat.log
 elif test -f /etc/$CONFIG_F; then 
 	CONFIG_F=/etc/blackhat.conf
 	LOG_F=/var/log/blackhat.log
-	echo "Loaded Config From: $CONFIG_F"
 else
 	echo "Could not load conf file"
 	exit
 fi
+
+echo "Loaded Config From: $CONFIG_F"
 
 source $CONFIG_F 
 rm $LOG_F 2>/dev/null
@@ -25,8 +28,14 @@ function print_help() {
 	echo "    SSID       Set SSID of WiFi network to connect to"
 	echo "    PASS       Set password for WiFi network: SSID"
 	echo "    AP_SSID    Set SSID of WiFi network you're creating"
-	echo "  connect_wifi Connect to a WiFi network"
+	echo "  wifi         Connect to a WiFi network"
+    echo "    list       List WiFi APs"
+    echo "    connect    Connect to WiFi AP"
+	echo "    ap         Enable Access Point"
+	echo "  ssh          Enable SSH"
 	echo "  evil_twin    Enable the evil twin AP"
+	echo "  evil_portal  Enable the evil portal AP"
+    echo "  rat_driver   Enable RAT Driving"
 	echo "  get          Get currently set parameters"
 }
 
@@ -48,20 +57,21 @@ function evil_twin() {
 	dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F & 
 }
 
+function ap() {
+    echo "Opening Access Point"
+
+}
+
+function evil_portal() {
+    echo "Not Implemented yet!"
+}
+
+function evil_portal() {
+    echo "Not Implemented yet!"
+}
+
 function set() {
-	case "$1" in
-		SSID)
-			sed -i "/^SSID=/c\SSID=$2" ${CONFIG_F}	
-			;;
-		PASS)
-			sed -i "/^PASS=/c\PASS=$2" ${CONFIG_F}	
-			;;
-		AP_SSID)
-			sed -i "/^AP_SSID=/c\AP_SSID=$2" ${CONFIG_F}	
-			;;
-		*)
-			print_help
-	esac
+	sed -i "/^$1=/c$1=\"$2\"" ${CONFIG_F}	
 }
 
 function wifi() {
@@ -73,6 +83,9 @@ function wifi() {
 			ip link set $RADIO_CLIENT up
 			connect_wifi $RADIO_CLIENT
 			;;
+        ap)
+            echo "Not implemented YEt"
+            ;;
 		*)
 			print_help
 	esac

