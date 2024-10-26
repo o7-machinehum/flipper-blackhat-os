@@ -17,10 +17,3 @@ Initialize the configuration, including the defconfig and this external director
 And compile:
 
 	make
-
-## TODO
-- [x] Linux autologin
-- [x] Disable uboot option to cancel boot
-- [ ] FAT32 partition should mount in /mnt/ (mount /dev/mmcblk1p1 /mnt/)
-    - [ ] bh app should read blackhat.conf from this
-- [ ] Rename all SIPEED stuff to blackhat
