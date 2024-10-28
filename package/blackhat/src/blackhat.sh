@@ -6,7 +6,7 @@ if test -f $CONFIG_F; then
 	CONFIG_F=$(pwd)/$CONFIG_F
 	LOG_F=blackhat.log
 elif test -f /mnt/$CONFIG_F; then 
-	CONFIG_F=$/mnt/$CONFIG_F
+	CONFIG_F=/mnt/$CONFIG_F
 	LOG_F=/mnt/blackhat.log
 elif test -f /etc/$CONFIG_F; then 
 	CONFIG_F=/etc/blackhat.conf
