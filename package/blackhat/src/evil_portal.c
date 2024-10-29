@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <signal.h>
 
 #define PORT 80
 #define BUF_SIZE 4096
@@ -76,15 +77,28 @@ void handle_login(int client_socket, const char* request, const char* client_ip)
     }
 }
 
+int server_fd = -1;
+
+void handle_signal(int signal) {
+    if (signal == SIGTERM) {
+        if (server_fd != -1) {
+            close(server_fd);
+            printf("Socket closed successfully.\n");
+        };
+        exit(0);
+    }
+}
+
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <path_to_index_html>\n", argv[0]);
         return 1;
     }
+    signal(SIGTERM, handle_signal);
 
     const char *html_file_path = argv[1];
 
-    int server_fd, client_socket, valread;
+    int client_socket, valread;
     struct sockaddr_in address;
     int addrlen = sizeof(address);
     char buffer[BUF_SIZE] = {0};
