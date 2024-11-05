@@ -74,6 +74,14 @@
 		compatible = "mmc-pwrseq-simple";
 		reset-gpios = <&pio 6 12 GPIO_ACTIVE_LOW>; /* PG12 */
 	};
+
+    /*
+    backlight: backlight {
+		compatible = "pwm-backlight";
+		power-supply = <&reg_vcc3v3>;
+		pwms = <&pwm4 0 25000 0>;
+	};
+    */
 };
 
 &codec {
@@ -167,3 +175,14 @@
 	status = "okay";
 };
 
+&dsi {
+	panel: panel@0 {
+		compatible = "techstar,ts8550b", "sitronix,st7701";
+		reg = <0>;
+		VCC-supply = <&reg_vcc3v3>;
+		IOVCC-supply = <&reg_vcc3v3>;
+		pinctrl-names = "default";
+		reset-gpios = <&pio 7 4 GPIO_ACTIVE_HIGH>; /* PH4 */
+	    status = "okay";
+	};
+};
