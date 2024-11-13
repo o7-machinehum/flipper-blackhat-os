@@ -1,46 +1,3 @@
-/*
- * Copyright 2016 - Stefan Mavrodiev <stefan.mavrodiev@gmail.com>
- *                  Olimex LTD. <support@olimex.com>
- *
- * This file is dual-licensed: you can use it either under the terms
- * of the GPL or the X11 license, at your option. Note that this dual
- * licensing only applies to this file, and not this project as a
- * whole.
- *
- *  a) This file is free software; you can redistribute it and/or
- *     modify it under the terms of the GNU General Public License as
- *     published by the Free Software Foundation; either version 2 of the
- *     License, or (at your option) any later version.
- *
- *     This file is distributed in the hope that it will be useful,
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
- *
- * Or, alternatively,
- *
- *  b) Permission is hereby granted, free of charge, to any person
- *     obtaining a copy of this software and associated documentation
- *     files (the "Software"), to deal in the Software without
- *     restriction, including without limitation the rights to use,
- *     copy, modify, merge, publish, distribute, sublicense, and/or
- *     sell copies of the Software, and to permit persons to whom the
- *     Software is furnished to do so, subject to the following
- *     conditions:
- *
- *     The above copyright notice and this permission notice shall be
- *     included in all copies or substantial portions of the Software.
- *
- *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- *     OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- *     HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- *     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- *     OTHER DEALINGS IN THE SOFTWARE.
- */
-
 /dts-v1/;
 #include "allwinner/sun8i-a33.dtsi"
 #include "allwinner/sunxi-common-regulators.dtsi"
@@ -49,39 +6,45 @@
 #include <dt-bindings/input/input.h>
 
 / {
-	model = "Olimex A33-OLinuXino";
-	compatible = "olimex,a33-olinuxino","allwinner,sun8i-a33";
+    model = "Olimex A33-OLinuXino";
+    compatible = "olimex,a33-olinuxino","allwinner,sun8i-a33";
 
-	aliases {
-		ethernet0 = &rtl8723ds;
-		serial0 = &uart0;
-	};
+    backlight: backlight {
+        compatible = "gpio-backlight";
+        gpios = <&pio 7 8 GPIO_ACTIVE_HIGH>; /* PH8 */
+        default-on;
+    };
 
-	chosen {
-		stdout-path = "serial0:115200n8";
-	};
+    aliases {
+        ethernet0 = &rtl8723ds;
+        serial0 = &uart0;
+    };
 
-	leds {
-		compatible = "gpio-leds";
+    chosen {
+        stdout-path = "serial0:115200n8";
+    };
 
-		led {
-			label = "a33-olinuxino:green:usr";
-			gpios = <&pio 1 7 GPIO_ACTIVE_HIGH>;
-		};
-	};
+    leds {
+        compatible = "gpio-leds";
 
-	wifi_pwrseq: wifi-pwrseq {
-		compatible = "mmc-pwrseq-simple";
-		reset-gpios = <&pio 6 12 GPIO_ACTIVE_LOW>; /* PG12 */
-	};
+        led {
+            label = "a33-olinuxino:green:usr";
+            gpios = <&pio 1 7 GPIO_ACTIVE_HIGH>;
+        };
+    };
+
+    wifi_pwrseq: wifi-pwrseq {
+        compatible = "mmc-pwrseq-simple";
+        reset-gpios = <&pio 6 12 GPIO_ACTIVE_LOW>; /* PG12 */
+    };
 };
 
 &codec {
-	status = "okay";
+    status = "okay";
 };
 
 &dai {
-	status = "okay";
+    status = "okay";
 };
 
 &reg_vcc3v3 {
@@ -89,81 +52,137 @@
 };
 
 &mmc0 {
-	vmmc-supply = <&reg_vcc3v3>;
-	bus-width = <4>;
-	cd-gpios = <&pio 1 4 GPIO_ACTIVE_LOW>; /* PB4 */
-	status = "okay";
+    vmmc-supply = <&reg_vcc3v3>;
+    bus-width = <4>;
+    cd-gpios = <&pio 1 4 GPIO_ACTIVE_LOW>; /* PB4 */
+    status = "okay";
 };
 
 &mmc1 {
-	vmmc-supply = <&reg_vcc3v3>;
-	vqmmc-supply = <&reg_vcc3v3>;
-	bus-width = <4>;
-	mmc-pwrseq = <&wifi_pwrseq>;
-	pinctrl-0 = <&mmc1_pg_pins>;
-	pinctrl-names = "default";
-	status = "okay";
-	non-removable;
-	no-sd;
-	no-mmc;
+    vmmc-supply = <&reg_vcc3v3>;
+    vqmmc-supply = <&reg_vcc3v3>;
+    bus-width = <4>;
+    mmc-pwrseq = <&wifi_pwrseq>;
+    pinctrl-0 = <&mmc1_pg_pins>;
+    pinctrl-names = "default";
+    status = "okay";
+    non-removable;
+    no-sd;
+    no-mmc;
 
-	rtl8723ds: wifi@1 {
-		compatible = "realtek,rtw_8723ds";
-		reg = <1>;
-	};
+    rtl8723ds: wifi@1 {
+        compatible = "realtek,rtw_8723ds";
+        reg = <1>;
+    };
 };
 
 &uart1 {
-	uart-has-rtscts;
-	pinctrl-0 = <&uart1_pg_pins>, <&uart1_cts_rts_pg_pins>;
-	pinctrl-names = "default";
-	status = "okay";
+    uart-has-rtscts;
+    pinctrl-0 = <&uart1_pg_pins>, <&uart1_cts_rts_pg_pins>;
+    pinctrl-names = "default";
+    status = "okay";
 
-	bluetooth {
-		compatible = "realtek,rtl8723ds-bt";
-		device-wake-gpios = <&pio 6 11 GPIO_ACTIVE_HIGH>; /* PG11 */
-		enable-gpios = <&pio 7 0 GPIO_ACTIVE_HIGH>; /* PH0 */
-		host-wake-gpios = <&pio 6 13 GPIO_ACTIVE_HIGH>; /* PG13 */
-	};
+    bluetooth {
+        compatible = "realtek,rtl8723ds-bt";
+        device-wake-gpios = <&pio 6 11 GPIO_ACTIVE_HIGH>; /* PG11 */
+        enable-gpios = <&pio 7 0 GPIO_ACTIVE_HIGH>; /* PH0 */
+        host-wake-gpios = <&pio 6 13 GPIO_ACTIVE_HIGH>; /* PG13 */
+    };
 };
 
 &ohci0 {
-	status = "okay";
+    status = "okay";
 };
 
 &sound {
-	/* Board level jack widgets */
-	simple-audio-card,widgets = "Microphone", "Microphone Jack",
-				    "Headphone", "Headphone Jack";
-	/* Board level routing. First 2 routes copied from SoC level */
-	simple-audio-card,routing =
-		"Left DAC", "DACL",
-		"Right DAC", "DACR",
-		"HP", "HPCOM",
-		"Headphone Jack", "HP",
-		"MIC1", "Microphone Jack",
-		"Microphone Jack", "MBIAS";
-	status = "okay";
+    /* Board level jack widgets */
+    simple-audio-card,widgets = "Microphone", "Microphone Jack",
+                    "Headphone", "Headphone Jack";
+    /* Board level routing. First 2 routes copied from SoC level */
+    simple-audio-card,routing =
+        "Left DAC", "DACL",
+        "Right DAC", "DACR",
+        "HP", "HPCOM",
+        "Headphone Jack", "HP",
+        "MIC1", "Microphone Jack",
+        "Microphone Jack", "MBIAS";
+    status = "okay";
 };
 
 &uart0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&uart0_pb_pins>;
-	status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&uart0_pb_pins>;
+    status = "okay";
 };
 
 &usbphy {
-	usb0_vbus-supply = <&reg_vcc5v0>;
-	usb1_vbus-supply = <&reg_vcc5v0>;
+    usb0_vbus-supply = <&reg_vcc5v0>;
+    usb1_vbus-supply = <&reg_vcc5v0>;
     status = "okay";
 };
 
 &usb_otg {
-	dr_mode = "host";
-	status = "okay";
+    dr_mode = "host";
+    status = "okay";
 };
 
 &ehci0 {
-	status = "okay";
+    status = "okay";
 };
 
+&pio {
+    vcc-pa-supply = <&reg_vcc3v3>;
+    vcc-pb-supply = <&reg_vcc3v3>;
+    vcc-pc-supply = <&reg_vcc3v3>;
+    vcc-pd-supply = <&reg_vcc3v3>;
+    vcc-pe-supply = <&reg_vcc3v3>;
+    vcc-pf-supply = <&reg_vcc3v3>;
+    vcc-pg-supply = <&reg_vcc3v3>;
+    vcc-ph-supply = <&reg_vcc3v3>;
+};
+
+&dphy {
+    status = "okay";
+};
+
+&drc0 {
+    status = "okay";
+};
+
+&tcon0 {
+    status = "okay";
+};
+
+
+&tcon0_out {
+    status = "okay";
+};
+
+
+&mali {
+    status = "okay";
+};
+
+&de {
+    status = "okay";
+};
+
+
+&be0 {
+    status = "okay";
+};
+
+&dsi {
+    vcc-dsi-supply = <&reg_vcc3v3>;
+    status = "okay";
+    panel: panel@0 {
+        compatible = "densitron,dmt028vghmcmi-1a", "sitronix,st7701";
+        reg = <0>;
+        backlight = <&backlight>;
+        VCC-supply = <&reg_vcc3v3>;
+        IOVCC-supply = <&reg_vcc3v3>;
+        pinctrl-names = "default";
+        reset-gpios = <&pio 7 4 GPIO_ACTIVE_LOW>; /* PH4 */
+        status = "okay";
+    };
+};
