@@ -42,16 +42,16 @@ function print_help() {
 }
 
 function connect_wifi() {
-    echo $1> /tmp/inet_nic
-    INET_NIC=$(cat /tmp/inet_nic)
+    echo $1> /run/inet_nic
+    INET_NIC=$(cat /run/inet_nic)
 
     ip link set $INET_NIC up
     wpa_supplicant -B -i $INET_NIC -c <(wpa_passphrase $SSID $PASS)
 }
 
 function start_ap() {
-    echo $1 > /tmp/ap_nic
-    AP_NIC=$(cat /tmp/ap_nic)
+    echo $1 > /run/ap_nic
+    AP_NIC=$(cat /run/ap_nic)
 
     ip link set $AP_NIC down
     ip addr add $AP_IP/24 dev $AP_NIC
@@ -67,25 +67,25 @@ function start_ap() {
 }
 
 function evil_twin() {
-    ip link set $RADIO_AP down
-    ip addr add 192.168.2.1/24 dev $RADIO_AP
+    INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { echo "Connect to WiFi first"; exit 1; }
+    AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { echo "Create AP first"; exit 1; }
 
-    iptables --table nat --append POSTROUTING --out-interface $RADIO_CLIENT -j MASQUERADE
-    iptables --append FORWARD --in-interface $RADIO_AP -j ACCEPT
     echo 1 > /proc/sys/net/ipv4/ip_forward
 
-    hostapd /etc/hostapd.conf &
-    connect_wifi $RADIO_CLIENT
+    # Clear any previous NAT and FORWARD rules related to the interfaces
+    iptables --table nat --delete POSTROUTING --out-interface $INET_NIC -j MASQUERADE 
+    iptables --delete FORWARD --in-interface $AP_NIC -j ACCEPT 
 
-    kill $(pidof dnsmasq)
-    dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F & 
+    # Set up NAT and FORWARD rules
+    iptables --table nat --append POSTROUTING --out-interface $INET_NIC -j MASQUERADE
+    iptables --append FORWARD --in-interface $AP_NIC -j ACCEPT
 }
 
 # Before calling this, both start_ap and connect_wifi
 # should have been called.
 function evil_portal() {
-    INET_NIC=$(cat /tmp/inet_nic 2>/dev/null) || { echo "Connect to WiFi first"; exit 1; }
-    AP_NIC=$(cat /tmp/ap_nic 2>/dev/null) || { echo "Create AP first"; exit 1; }
+    INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { echo "Connect to WiFi first"; exit 1; }
+    AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { echo "Create AP first"; exit 1; }
 
     # echo 1 > /proc/sys/net/ipv4/ip_forward
     
@@ -176,7 +176,8 @@ case "$subcommand" in
         ;;
     pull)
         scp machinehum@192.168.1.103:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.conf /mnt/
-        scp machinehum@192.168.1.103:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.sh /usr/bin/bh
+        scp machinehum@192.168.1.103:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.sh /tmp/bh
+        mv /tmp/bh /usr/bin/bh
         ;;
     *)
         print_help
