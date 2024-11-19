@@ -1,7 +1,9 @@
 # Flipper Blackhat OS
 
-## Build
+## Releases
+The best way to get your hands on all the most recent feature is the [nightly build](https://github.com/o7-machinehum/flipper-blackhat-os/actions) here. Just click the most recent "Nightly" and you will find the OS artifacts at the bottom.
 
+## Build
 Make sure submodules are initialized:
 
 	git submodule update --init
