@@ -132,8 +132,35 @@ function wifi() {
             start_ap $2
             ;;
         dev)
-            iw dev | grep -e phy -e wlan
-            iw list | awk '/Wiphy/{if(phy) {if(b1 && b2) {print "phy" phy ": 2.4 GHz and 5 GHz"} else if(b1) {print "phy" phy ": 2.4 GHz"} else if(b2) {print "phy" phy ": 5 GHz"}; b1=0; b2=0} phy=$2} /Band 1/{b1=1} /Band 2/{b2=1} END{if(b1 && b2){print "phy" phy ": 2.4 GHz and 5 GHz"} else if(b1){print "phy" phy ": 2.4 GHz"} else if(b2){print "phy" phy ": 5 GHz"}}'
+            s=$(iw dev | grep -e phy -e wlan)
+            s=$(echo $s | sed 's/Interface//g')
+            s=$(echo $s | sed 's/#//g')
+
+            for word in $s; do
+                if [[ $word == phy* ]]; then
+                    phy=$word
+                elif [[ $word == wlan* ]]; then
+                    eval "$word=$phy"
+                fi
+            done
+
+            # Manually loop through the wlanX variables
+            i=0
+            while true; do
+                var="wlan$i"
+                # Check if the variable exists by testing its value
+                eval "value=\$$var"  # Dereference the variable using eval
+                if [ -n "$value" ]; then
+                    if iw $value info | grep -qE "5180 MHz|5200 MHz|5220 MHz|5240 MHz|5260 MHz"; then
+                        echo "$var -> 2.4GHz / 5GHz"
+                    else
+                        echo "$var -> 2.4GHz"
+                    fi
+                else
+                    break
+                fi
+                i=$((i+1))
+            done
             ;;
         ip)
             ip addr | grep wlan | awk -F': <' '{print $1}' | awk -F'/24' '{print $1}'
