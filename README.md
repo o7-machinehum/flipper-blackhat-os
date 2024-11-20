@@ -19,3 +19,10 @@ Initialize the configuration, including the defconfig and this external director
 And compile:
 
 	make
+
+
+## Notes
+
+/etc/resolv.conf
+nameserver 8.8.8.8
+nameserver 1.1.1.1
