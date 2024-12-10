@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <signal.h>
 
-#define PORT 8080
+#define PORT 80
 #define BUF_SIZE 4096
 
 void serve_static_file(int client_socket, const char* filename, const char* content_type) {
@@ -89,7 +89,7 @@ void handle_login(int client_socket, char* body, const char* client_ip) {
         redirect_user(client_socket);
     }
 
-    // fclose(file);    
+    fclose(file);    
 }
 
 int server_fd = -1;
