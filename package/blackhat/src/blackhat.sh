@@ -110,7 +110,7 @@ function evil_portal() {
 
     kill $(pidof httpd) 2>/dev/null
     kill $(pidof evil_portal) 2>/dev/null
-    ./usr/bin/evil_portal $EVIL_PORTAL &
+    ./usr/bin/evil_portal $EVIL_PORTAL $INET_NIC &
 
     # This is the command to route this one IP to the net.
     # iptables -t nat -A POSTROUTING -o $INET_NIC -s $CLIENT_IP -j MASQUERADE

