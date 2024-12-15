@@ -1,4 +1,4 @@
-/ SPDX-License-Identifier: GPL-2.0+
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2019, Amarula Solutions.
  * Author: Jagan Teki <jagan@amarulasolutions.com>
@@ -95,9 +95,9 @@
 
 enum op_bias {
 	OP_BIAS_OFF = 0,
-	OP_BIAS_MIN,
-	OP_BIAS_MIDDLE,
-	OP_BIAS_MAX
+	OP_BIAS_MIN,    // 0b01
+	OP_BIAS_MIDDLE, // 0b10
+	OP_BIAS_MAX     // 0b11
 };
 
 struct st7701;
@@ -194,10 +194,12 @@ static u8 st7701_vgls_map(struct st7701 *st7701)
 
 static void st7701_switch_cmd_bkx(struct st7701 *st7701, bool cmd2, u8 bkx)
 {
+
 	u8 val;
 
 	if (cmd2)
 		val = ST7701_CMD2 | FIELD_PREP(ST7701_CMD2BK_MASK, bkx);
+        // val = 0b0001 xxxx, xxxx = bkx
 	else
 		val = ST7701_CMD1;
 
@@ -221,6 +223,7 @@ static void st7701_init_sequence(struct st7701 *st7701)
 	msleep(st7701->sleep_delay);
 
 	/* Command2, BK0 */
+    // tft34.write1
 	st7701_switch_cmd_bkx(st7701, true, 0);
 
 	st7701->write_command(st7701, ST7701_CMD2_BK0_PVGAMCTRL, desc->pv_gamma,
@@ -242,6 +245,7 @@ static void st7701_init_sequence(struct st7701 *st7701)
 		   FIELD_PREP(ST7701_CMD2_BK0_LNESET_LINE_MASK, linecount8 - 1) |
 		   (linecountrem2 ? ST7701_CMD2_BK0_LNESET_LDE_EN : 0),
 		   FIELD_PREP(ST7701_CMD2_BK0_LNESET_LINEDELTA, linecountrem2));
+
 	ST7701_WRITE(st7701, ST7701_CMD2_BK0_PORCTRL,
 		   FIELD_PREP(ST7701_CMD2_BK0_PORCTRL_VBP_MASK,
 			      mode->vtotal - mode->vsync_end),
@@ -265,7 +269,7 @@ static void st7701_init_sequence(struct st7701 *st7701)
 	/* Vop = 3.5375V + (VRHA[7:0] * 0.0125V) */
 	ST7701_WRITE(st7701, ST7701_CMD2_BK1_VRHS,
 		   FIELD_PREP(ST7701_CMD2_BK1_VRHA_MASK,
-			      DIV_ROUND_CLOSEST(desc->vop_uv - 3537500, 12500)));
+			      DIV_ROUeD_CLOSEST(desc->vop_uv - 3537500, 12500)));
 
 	/* Vcom = 0.1V + (VCOM[7:0] * 0.0125V) */
 	ST7701_WRITE(st7701, ST7701_CMD2_BK1_VCOM,
@@ -280,13 +284,16 @@ static void st7701_init_sequence(struct st7701 *st7701)
 						      (u16)17000) - 11500,
 						500)));
 
+    // tft42.testcmd
 	ST7701_WRITE(st7701, ST7701_CMD2_BK1_TESTCMD, ST7701_CMD2_BK1_TESTCMD_VAL);
 
 	/* Vgl is non-linear */
+    // tft42.st7701_cmd2_bk1_vgls_ones
 	ST7701_WRITE(st7701, ST7701_CMD2_BK1_VGLS,
 		   ST7701_CMD2_BK1_VGLS_ONES |
 		   FIELD_PREP(ST7701_CMD2_BK1_VGLS_MASK, st7701_vgls_map(st7701)));
 
+    // tft42.gamma
 	ST7701_WRITE(st7701, ST7701_CMD2_BK1_PWCTLR1,
 		   FIELD_PREP(ST7701_CMD2_BK1_PWRCTRL1_AP_MASK,
 			      desc->gamma_op_bias) |
@@ -296,6 +303,7 @@ static void st7701_init_sequence(struct st7701 *st7701)
 			      desc->output_op_bias));
 
 	/* Avdd = 6.2V + (AVDD[1:0] * 0.2V) , Avcl = -4.4V - (AVCL[1:0] * 0.2V) */
+    // tft42.avdd_mv
 	ST7701_WRITE(st7701, ST7701_CMD2_BK1_PWCTLR2,
 		   FIELD_PREP(ST7701_CMD2_BK1_PWRCTRL2_AVDD_MASK,
 			      DIV_ROUND_CLOSEST(desc->avdd_mv - 6200, 200)) |
@@ -304,17 +312,20 @@ static void st7701_init_sequence(struct st7701 *st7701)
 			      DIV_ROUND_CLOSEST(-4400 - desc->avcl_mv, 200)));
 
 	/* T2D = 0.2us * T2D[3:0] */
+    // tft42.t2d_ns
 	ST7701_WRITE(st7701, ST7701_CMD2_BK1_SPD1,
 		   ST7701_CMD2_BK1_SPD1_ONES_MASK |
 		   FIELD_PREP(ST7701_CMD2_BK1_SPD1_T2D_MASK,
 			      DIV_ROUND_CLOSEST(desc->t2d_ns, 200)));
 
 	/* T3D = 4us + (0.8us * T3D[3:0]) */
+    // tft42.t3d_ns
 	ST7701_WRITE(st7701, ST7701_CMD2_BK1_SPD2,
 		   ST7701_CMD2_BK1_SPD2_ONES_MASK |
 		   FIELD_PREP(ST7701_CMD2_BK1_SPD2_T3D_MASK,
 			      DIV_ROUND_CLOSEST(desc->t3d_ns - 4000, 800)));
 
+    // tft42.eot_en
 	ST7701_WRITE(st7701, ST7701_CMD2_BK1_MIPISET1,
 		   ST7701_CMD2_BK1_MIPISET1_ONES |
 		   (desc->eot_en ? ST7701_CMD2_BK1_MIPISET1_EOT_EN : 0));
@@ -322,27 +333,25 @@ static void st7701_init_sequence(struct st7701 *st7701)
 
 static void tft34_485_gip_sequence(struct st7701 *st7701)
 {
-	/**
-	 * ST7701_SPEC_V1.2 is unable to provide enough information above this
-	 * specific command sequence, so grab the same from vendor BSP driver.
-	 */
-	ST7701_WRITE(st7701, 0xE0, 0x00, 0x00, 0x02);
-	ST7701_WRITE(st7701, 0xE1, 0x0B, 0x00, 0x0D, 0x00, 0x0C, 0x00, 0x0E,
-		   0x00, 0x00, 0x44, 0x44);
-	ST7701_WRITE(st7701, 0xE2, 0x33, 0x33, 0x44, 0x44, 0x64, 0x00, 0x66,
-		   0x00, 0x65, 0x00, 0x67, 0x00, 0x00);
-	ST7701_WRITE(st7701, 0xE3, 0x00, 0x00, 0x33, 0x33);
-	ST7701_WRITE(st7701, 0xE4, 0x44, 0x44);
-	ST7701_WRITE(st7701, 0xE5, 0x0C, 0x78, 0x3C, 0xA0, 0x0E, 0x78, 0x3C,
-		   0xA0, 0x10, 0x78, 0x3C, 0xA0, 0x12, 0x78, 0x3C, 0xA0);
-	ST7701_WRITE(st7701, 0xE6, 0x00, 0x00, 0x33, 0x33);
-	ST7701_WRITE(st7701, 0xE7, 0x44, 0x44);
-	ST7701_WRITE(st7701, 0xE8, 0x0D, 0x78, 0x3C, 0xA0, 0x0F, 0x78, 0x3C,
-		   0xA0, 0x11, 0x78, 0x3C, 0xA0, 0x13, 0x78, 0x3C, 0xA0);
-	ST7701_WRITE(st7701, 0xEB, 0x02, 0x02, 0x39, 0x39, 0xEE, 0x44, 0x00);
-	ST7701_WRITE(st7701, 0xEC, 0x00, 0x00);
-	ST7701_WRITE(st7701, 0xED, 0xFF, 0xF1, 0x04, 0x56, 0x72, 0x3F, 0xFF,
-		   0xFF, 0xFF, 0xFF, 0xF3, 0x27, 0x65, 0x40, 0x1F, 0xFF);
+	ST7701_WRITE(st7701, 0xE0, 0x00, 0x00, 0x02); // tft34.gip1
+	ST7701_WRITE(st7701, 0xE1, 0x06, 0x30, 0x08, 0x30, 0x05, 0x30, 0x07,
+		   0x30, 0x00, 0x33, 0x33); // tft34.gip2
+	ST7701_WRITE(st7701, 0xE2, 0x11, 0x11, 0x33, 0x33, 0xf4, 0x00, 0x00,
+		   0x00, 0xf4, 0x00, 0x00, 0x00); // tft34.gip3
+	ST7701_WRITE(st7701, 0xE3, 0x00, 0x00, 0x11, 0x11); // tft34.gip4
+	ST7701_WRITE(st7701, 0xE4, 0x44, 0x44); // tft34.gip5
+	ST7701_WRITE(st7701, 0xE5, 0x0D, 0xF5, 0x30, 0xF0, 0x0F, 0xF7, 0x30,
+		   0xF0, 0x09, 0xF1, 0x30, 0xF0, 0x0B, 0xF3, 0x30, 0xF0); // tft34.gip6
+	ST7701_WRITE(st7701, 0xE6, 0x00, 0x00, 0x11, 0x11); // tft34.gip7
+	ST7701_WRITE(st7701, 0xE7, 0x44, 0x44); // tft34.gip8
+	ST7701_WRITE(st7701, 0xE8, 0x0C, 0xF4, 0x30, 0xF0, 0x0E, 0xF6, 0x30,
+		   0xF0, 0x08, 0xF0, 0x30, 0xF0, 0x0A, 0xF2, 0x30, 0xF0); // tft34.gip9
+	ST7701_WRITE(st7701, 0xE9, 0x36, 0x01); // tft34.gip10
+	ST7701_WRITE(st7701, 0xEB, 0x00, 0x01, 0xE4, 0xE4, 0x44, 0x88, 0x40); // tft34.gip11
+	ST7701_WRITE(st7701, 0xED, 0xFF, 0x45, 0x67, 0xFA, 0x01, 0x2B, 0xCF,
+		   0xFF, 0xFF, 0xFC, 0xB2, 0x10, 0xAF, 0x76, 0x54, 0xFF); // tft34.gip12
+	ST7701_WRITE(st7701, 0xEF, 0x10, 0x0D, 0x04, 0x08, 0x3F, 0x1F); // tft34.gip13
+	ST7701_WRITE(st7701, 0xFF, 0x10, 0x0D, 0x04, 0x08, 0x3F, 0x1F); // tft34.gip14
 }
 
 static void ts8550b_gip_sequence(struct st7701 *st7701)
@@ -665,17 +674,17 @@ static const struct drm_panel_funcs st7701_funcs = {
 
 // My Driver
 static const struct drm_display_mode tft34_485_mode = {
-	.clock		= 20000,
+	.clock		= 20000, // tft34.RGB_CLOCK
 
-	.hdisplay	= 480,
-	.hsync_start	= 480 + 20,
-	.hsync_end	= 480 + 20 + 8,
-	.htotal		= 480 + 38 + 8 + 56,
+	.hdisplay	= 480 // tft34.Resolution
+	.hsync_start	= 480 + 20, // tft34.horizontal_frontporch
+	.hsync_end	= 480 + 20 + 8, // tft34.horizontal_sync_active
+	.htotal		= 480 + 38 + 8 + 56, // tft34.horizontal_backporch
 
-	.vdisplay	= 480,
-	.vsync_start	= 480 + 40,
-	.vsync_end	= 480 + 40 + 10,
-	.vtotal		= 480 + 40 + 10 + 60,
+	.vdisplay	= 480, // tft34.Resolution
+	.vsync_start	= 480 + 40, // tft34.vertical_frontporch
+	.vsync_end	= 480 + 40 + 10, //tft34.vertical_sync_active
+	.vtotal		= 480 + 40 + 10 + 60, // tft34.vertical_backporch
 
 	.width_mm	= 69,
 	.height_mm	= 139,
@@ -687,9 +696,9 @@ static const struct st7701_panel_desc tft34_485_desc = {
 	.mode = &tft34_485_mode,
 	.lanes = 2,
 	.format = MIPI_DSI_FMT_RGB888,
-	.panel_sleep_delay = 80, /* panel need extra 80ms for sleep out cmd */
+	.panel_sleep_delay = 120, // tft34.panel_sleep_delay
 
-	.pv_gamma = {
+	.pv_gamma = { // tft34.gamma1
         0x40,
         0x0E,
         0x58,
@@ -707,7 +716,7 @@ static const struct st7701_panel_desc tft34_485_desc = {
         0x26,
         0xC7
 	},
-	.nv_gamma = {
+	.nv_gamma = { // tft34.gamma2
         0x40,
         0x13,
         0x5B,
@@ -726,18 +735,18 @@ static const struct st7701_panel_desc tft34_485_desc = {
         0xC9
 	},
 	.nlinv = 7,
-	.vop_uv = 4900000,
-	.vcom_uv = 800000,
-	.vgh_mv = 15000, // Leaving this
+	.vop_uv = 4900000, // tft42.vop_uv
+	.vcom_uv = 800000, // tft42.vcom
+	.vgh_mv = 15000,
 	.vgl_mv = -12200,
-	.avdd_mv = 6600,
-	.avcl_mv = -4400,
-	.gamma_op_bias = OP_BIAS_MIDDLE,
-	.input_op_bias = OP_BIAS_MIN,
-	.output_op_bias = OP_BIAS_MIN,
-	.t2d_ns = 1600,
-	.t3d_ns = 10400,
-	.eot_en = true,
+	.avdd_mv = 6200, // tft42.avdd_mv
+	.avcl_mv = -4400, // tft42.avcl_mv
+	.gamma_op_bias = OP_BIAS_MIDDLE, // tft42.gamma
+	.input_op_bias = OP_BIAS_MIN, // tft42.gamma
+	.output_op_bias = OP_BIAS_MIN, // tft42.gamma
+	.t2d_ns = 1600, // tft42.t2d_ns
+	.t3d_ns = 10400, // tft42.t3d_ns
+	.eot_en = true, // tft42.eot_en
 	.gip_sequence = tft34_485_gip_sequence,
 };
 
