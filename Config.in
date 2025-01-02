@@ -1,1 +1,2 @@
 source "$BR2_EXTERNAL_SIPEED_PATH/package/blackhat/Config.in"
+source "$BR2_EXTERNAL_SIPEED_PATH/package/opennds/Config.in"
