@@ -1,0 +1,13 @@
+diff --git a/forward_authentication_service/libs/libopennds.sh b/forward_authentication_service/libs/libopennds.sh
+index e952f37..649e76d 100755
+--- a/forward_authentication_service/libs/libopennds.sh
++++ b/forward_authentication_service/libs/libopennds.sh
+@@ -1196,7 +1196,7 @@ wait_for_interface () {
+ 	local timeout=10
+ 
+ 	for i in $(seq $timeout); do
+-		if [ $(ip link show $ifname 2> /dev/null | grep -c -w "state UP") -eq 1 ]; then
++		if [ $(ip link show $ifname 2> /dev/null | grep -c -w "UP") -eq 1 ]; then
+ 			ifstatus="up"
+ 			break
+ 		fi

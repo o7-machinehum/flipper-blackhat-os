@@ -9,7 +9,7 @@ endef
 
 define OPENNDS_INSTALL_TARGET_CMDS
 	$(TARGET_MAKE_ENV) $(MAKE) -C $(@D) $(TARGET_CONFIGURE_OPTS) \
-		DESTDIR=$(TARGET_DIR) STRIP=no
+		DESTDIR=$(TARGET_DIR) install
 endef
 
 $(eval $(generic-package))

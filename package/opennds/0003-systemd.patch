@@ -1,0 +1,24 @@
+diff --git a/forward_authentication_service/libs/dnsconfig.sh b/forward_authentication_service/libs/dnsconfig.sh
+index 35da1e0..46384be 100755
+--- a/forward_authentication_service/libs/dnsconfig.sh
++++ b/forward_authentication_service/libs/dnsconfig.sh
+@@ -55,19 +55,11 @@ delete_114s() {
+ }
+ 
+ restart_dnsmasq() {
+-	if [ "$uciconfig" = "" ]; then
+-		systemctl restart dnsmasq
+-	else
+ 		service dnsmasq restart
+-	fi
+ }
+ 
+ reload_dnsmasq() {
+-	if [ "$uciconfig" = "" ]; then
+-		systemctl reload dnsmasq
+-	else
+ 		service dnsmasq reload
+-	fi
+ }
+ 
+ 
