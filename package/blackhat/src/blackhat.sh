@@ -5,10 +5,10 @@ CONFIG_F=blackhat.conf
 if test -f $CONFIG_F; then
     CONFIG_F=$(pwd)/$CONFIG_F
     LOG_F=blackhat.log
-elif test -f /mnt/$CONFIG_F; then 
+elif test -f /mnt/$CONFIG_F; then
     CONFIG_F=/mnt/$CONFIG_F
     LOG_F=/mnt/blackhat.log
-elif test -f /etc/$CONFIG_F; then 
+elif test -f /etc/$CONFIG_F; then
     CONFIG_F=/etc/blackhat.conf
     LOG_F=/var/log/blackhat.log
 else
@@ -18,7 +18,7 @@ fi
 
 echo "Loaded Config: $CONFIG_F"
 
-source $CONFIG_F 
+source $CONFIG_F
 rm $LOG_F 2>/dev/null
 
 function print_help() {
@@ -37,6 +37,7 @@ function print_help() {
     echo "  ssh               Enable SSH"
     echo "  evil_twin         Enable the evil twin AP"
     echo "  evil_portal       Enable the evil portal AP"
+    echo "  kismet            Enable Kismet"
     echo "  rat_driver        Enable RAT Driving"
     echo "  get               Get currently set parameters"
 }
@@ -63,7 +64,7 @@ function start_ap() {
     hostapd /etc/hostapd.conf -i $AP_NIC &
 
     kill $(pidof dnsmasq) 2>/dev/null
-    dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F & 
+    dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F &
 }
 
 function evil_twin() {
@@ -97,7 +98,7 @@ function evil_portal() {
 }
 
 function set_param() {
-    sed -i "/^$1=/c$1=\"$2\"" ${CONFIG_F}   
+    sed -i "/^$1=/c$1=\"$2\"" ${CONFIG_F}
 }
 
 function check() {
@@ -110,15 +111,15 @@ function check() {
 function wifi() {
     case "$1" in
         list)
-            check $2            
+            check $2
             iw $2 scan | grep "SSID:"
             ;;
         connect)
-            check $2            
+            check $2
             connect_wifi $2
             ;;
         ap)
-            check $2            
+            check $2
             start_ap $2
             ;;
         dev)
@@ -160,13 +161,19 @@ function wifi() {
     esac
 }
 
+function bh_kismet() {
+    echo $1 > /run/kismet_nic
+    KISMET_NIC=$(cat /run/kismet_nic 2>/dev/null)
+    kismet -s -c $KISMET_NIC &
+}
+
 function ssh() {
     mkdir /var/run/dropbear 2>/dev/null
     /usr/sbin/dropbear -R
     echo "SSH Server Started"
 }
 
-subcommand=$1; shift  
+subcommand=$1; shift
 case "$subcommand" in
     set)
         set_param "$@"
@@ -185,6 +192,9 @@ case "$subcommand" in
         ;;
     evil_portal)
         evil_portal
+        ;;
+    kismet)
+       bh_kismet "$@"
         ;;
     rat_driver)
         echo "Not Implemented Yet"
