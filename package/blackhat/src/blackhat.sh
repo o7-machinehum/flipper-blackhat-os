@@ -164,7 +164,10 @@ function wifi() {
 function bh_kismet() {
     echo $1 > /run/kismet_nic
     KISMET_NIC=$(cat /run/kismet_nic 2>/dev/null)
-    kismet -s -c $KISMET_NIC:channels=36,40,44,48,149,153,157,161,165 &
+    kismet -s \
+        -c "$KISMET_NIC:channelhop=true,channels=\"36,40,44,48,149,153,157,161,165\"" \
+        > /dev/null &
+    echo "Kismet running on Port 2501"
 }
 
 function ssh() {
