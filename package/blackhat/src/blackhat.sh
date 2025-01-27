@@ -164,7 +164,7 @@ function wifi() {
 function bh_kismet() {
     echo $1 > /run/kismet_nic
     KISMET_NIC=$(cat /run/kismet_nic 2>/dev/null)
-    kismet -s -c $KISMET_NIC &
+    kismet -s -c $KISMET_NIC:channels=36,40,44,48,149,153,157,161,165 &
 }
 
 function ssh() {
