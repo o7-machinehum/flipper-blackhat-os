@@ -1,7 +1,11 @@
 #!/bin/sh
+
+# this ... ???
 cp $BINARIES_DIR/boot.scr $TARGET_DIR/boot/boot.scr
-cp $CONFIG_DIR/../genimage/readme.txt $BINARIES_DIR
-cp $CONFIG_DIR/../package/blackhat/src/blackhat.conf $BINARIES_DIR
+
+mkdir $BINARIES_DIR 2>/dev/null
+cp $CONFIG_DIR/../genimage/readme.txt $BINARIES_DIR/
+cp $CONFIG_DIR/../package/blackhat/src/blackhat.conf $BINARIES_DIR/
 
 mkdir $BINARIES_DIR/opennds
 cp $CONFIG_DIR/../package/blackhat/src/opennds/* $BINARIES_DIR/opennds/

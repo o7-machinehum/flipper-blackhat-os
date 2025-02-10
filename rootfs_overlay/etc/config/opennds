@@ -99,7 +99,7 @@ config opennds
 	# The ThemeSpec file will normally reside in /usr/lib/opennds/ but can be anywhere accessible to openNDS.
 	# The file must be flagged as executable and have the correct shebang for the default shell.
 	#
-	option themespec_path '/mnt/splash.html'
+	option themespec_path '/mnt/theme_click-to-continue-legacy.sh'
 	###########################################################################################
 
 	# Custom DHCP Leases File Location
@@ -758,7 +758,7 @@ config opennds
 	#
 	# Any entries set here, or above in Block Access, will override the default
 	#
-	# Example: 
+	# Example:
 	# Grant access to https web sites, subject to firewall rules that might be set elsewhere.
 	#list authenticated_users 'allow tcp port 443'
 	#
@@ -792,7 +792,7 @@ config opennds
 	# This can be problematic as sites can use many dynamic ip addresses.
 	# However, manual configuration does not require any additional dependencies (ie additional installed packages).
 	#
-	# Note that standard unencrypted HTTP port (TCP port 80) is used for captive portal detection (CPD) and 
+	# Note that standard unencrypted HTTP port (TCP port 80) is used for captive portal detection (CPD) and
 	# access to external websites should use HTTPS (TCP port 443) for security.
 	# It is still possible to allow TCP port 80 by using Autonomous Walled Garden approach.
 	#
@@ -811,7 +811,7 @@ config opennds
 	# But it does require the dnsmasq-full package (and also the ipset package if dnsmasq does not support nftsets) to be installed
 	#
 	# Configuration is then a simple matter of adding two lists as follows:
-	# 
+	#
 	# list walledgarden_fqdn_list 'fqdn1 fqdn2 fqdn3 .... fqdnN'
 	# list walledgarden_port_list 'port1 port2 port3 .... portN'
 	#
