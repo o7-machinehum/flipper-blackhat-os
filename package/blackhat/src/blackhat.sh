@@ -94,6 +94,8 @@ function evil_portal() {
 
     sed -i "s/option gatewayinterface '.*'/option gatewayinterface '$AP_NIC'/" /etc/config/opennds
 
+    # OpenNDS wants to do it's own dnsmasq thing
+    kill $(pidof dnsmasq) 2>/dev/null
     opennds -f
 }
 
