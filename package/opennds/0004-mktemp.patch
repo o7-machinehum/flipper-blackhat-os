@@ -1,0 +1,15 @@
+diff --git a/forward_authentication_service/libs/dnsconfig.sh b/forward_authentication_service/libs/dnsconfig.sh
+index 35da1e0..12d8640 100755
+--- a/forward_authentication_service/libs/dnsconfig.sh
++++ b/forward_authentication_service/libs/dnsconfig.sh
+@@ -101,7 +101,8 @@ elif [ "$setconf" = "hostconf" ]; then
+ 		# Generic Linux
+ 		host_entry="$gw_ip $gw_fqdn"
+ 		# generate a tmp filename on tmpfs
+-		ram_hosts=$(mktemp --tmpdir=/run/tmpfiles.d)
++		mkdir /run/tmpfiles.d 2>/dev/null
++		ram_hosts=$(mktemp -p /run/tmpfiles.d)
+
+ 		cp -p /etc/hosts "$ram_hosts" &&
+ 		(
+
