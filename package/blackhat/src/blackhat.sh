@@ -96,7 +96,7 @@ function evil_portal() {
 
     # OpenNDS wants to do it's own dnsmasq thing
     kill $(pidof dnsmasq) 2>/dev/null
-    opennds -f
+    opennds -f &
 }
 
 function set_param() {
