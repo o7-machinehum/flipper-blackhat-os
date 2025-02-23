@@ -34,7 +34,7 @@ click_to_continue() {
 	#
 	# The legacy splash.html file can be stored anywhere that this script can access.
 	# Traditionally it was stored in /etc/opennds/htdocs, so make sure you set the variable "legacy" to match the location.
-	legacy="/etc/opennds/htdocs/splash.html"
+	legacy="/mnt/splash.html"
 	legacysplash=$mountpoint/ndscids/$hid.html
 
 	if [ -e "$legacy" ]; then
@@ -125,7 +125,7 @@ quotas="$session_length $upload_rate $download_rate $upload_quota $download_quot
 
 # Define the list of Parameters we expect to be sent sent from openNDS ($ndsparamlist):
 # Note you can add custom parameters to the config file and to read them you must also add them here.
-# Custom parameters are "Portal" information and are the same for all clients eg "admin_email" and "location" 
+# Custom parameters are "Portal" information and are the same for all clients eg "admin_email" and "location"
 ndscustomparams=""
 ndscustomimages=""
 ndscustomfiles=""
@@ -155,9 +155,6 @@ userinfo="$title"
 
 # Customise the Logfile location. Note: the default uses the tmpfs "temporary" directory to prevent flash wear.
 # Override the defaults to a custom location eg a mounted USB stick.
-#mountpoint="/mylogdrivemountpoint"
-#logdir="$mountpoint/ndslog/"
-#logname="ndslog.log"
-
-
-
+mountpoint="/mnt/"
+logdir="$mountpoint/ndslog/"
+logname="ndslog.log"

@@ -8,7 +8,8 @@ cp $CONFIG_DIR/../genimage/readme.txt $BINARIES_DIR/
 cp $CONFIG_DIR/../package/blackhat/src/blackhat.conf $BINARIES_DIR/
 
 mkdir $BINARIES_DIR/opennds
-cp $CONFIG_DIR/../package/blackhat/src/opennds/* $BINARIES_DIR/opennds/
+cp $CONFIG_DIR/../package/blackhat/src/opennds/splash.html $BINARIES_DIR/opennds/
+cp $CONFIG_DIR/../package/blackhat/src/opennds/theme_click-to-continue-legacy.sh $BINARIES_DIR/opennds/
 
 rm -f $TARGET_DIR/etc/init.d/S50dropbear
 rm -f $TARGET_DIR/etc/init.d/S50apache
