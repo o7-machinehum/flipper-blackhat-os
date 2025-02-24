@@ -1,0 +1,29 @@
+diff --git a/forward_authentication_service/libs/libopennds.sh b/forward_authentication_service/libs/libopennds.sh
+index ae3a7d1..e4c6c34 100755
+--- a/forward_authentication_service/libs/libopennds.sh
++++ b/forward_authentication_service/libs/libopennds.sh
+@@ -1017,11 +1017,7 @@ check_mhd() {
+ 		debugtype="warn"
+ 		write_to_syslog
+
+-		if [ "$uci" -eq 1 ]; then
+-			systemctl restart opennds
+-		else
+-			/etc/init.d/opennds restart
+-		fi
++		/etc/init.d/opennds restart
+
+ 		exit 0
+ 	fi
+@@ -1296,11 +1292,7 @@ pre_setup () {
+
+ 		uci=$(type uci)
+
+-		if [ -z "$uci" ]; then
+-			systemctl stop opennds
+-		else
+-			/etc/init.d/opennds stop
+-		fi
++		/etc/init.d/opennds stop
+
+ 		exit 1
