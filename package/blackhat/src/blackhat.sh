@@ -60,10 +60,10 @@ function start_ap() {
     sed -i "s/^ssid=.*/ssid=$AP_SSID/" /etc/hostapd.conf
     sed -i "s/^interface=.*/interface=$AP_NIC/" /etc/dnsmasq.conf
 
-    kill -9 $(pidof hostapd) 2>/dev/null
+    kill $(pidof hostapd) 2>/dev/null
     hostapd /etc/hostapd.conf -i $AP_NIC &
 
-    kill -9 $(pidof dnsmasq) 2>/dev/null
+    kill $(pidof dnsmasq) 2>/dev/null
     dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F &
 }
 
@@ -95,7 +95,7 @@ function evil_portal() {
     sed -i "s/option gatewayinterface '.*'/option gatewayinterface '$AP_NIC'/" /etc/config/opennds
 
     # OpenNDS wants to do it's own dnsmasq thing
-    kill -9 $(pidof dnsmasq) 2>/dev/null
+    kill $(pidof dnsmasq) 2>/dev/null
     opennds -f &
 }
 
