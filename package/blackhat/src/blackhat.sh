@@ -71,15 +71,19 @@ function evil_twin() {
     INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { echo "Connect to WiFi first"; exit 1; }
     AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { echo "Create AP first"; exit 1; }
 
+    # Enable IP forwarding
     echo 1 > /proc/sys/net/ipv4/ip_forward
 
-    # Clear any previous NAT and FORWARD rules related to the interfaces
-    iptables --table nat --delete POSTROUTING --out-interface $INET_NIC -j MASQUERADE >/dev/null
-    iptables --delete FORWARD --in-interface $AP_NIC -j ACCEPT >/dev/null
+    nft delete rule ip nat postrouting oifname "$INET_NIC" masquerade 2>/dev/null
+    nft delete rule ip filter forward iifname "$AP_NIC" accept 2>/dev/null
 
-    # Set up NAT and FORWARD rules
-    iptables --table nat --append POSTROUTING --out-interface $INET_NIC -j MASQUERADE
-    iptables --append FORWARD --in-interface $AP_NIC -j ACCEPT
+    nft add table ip nat
+    nft add chain ip nat postrouting '{ type nat hook postrouting priority 100 ; }'
+    nft add rule ip nat postrouting oifname "$INET_NIC" masquerade
+
+    nft add table ip filter
+    nft add chain ip filter forward '{ type nat hook postrouting priority 100 ; }'
+    nft add rule ip filter forward iifname "$AP_NIC" accept
 }
 
 function evil_portal() {
