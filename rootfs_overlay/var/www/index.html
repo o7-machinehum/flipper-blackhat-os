@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Captive Portal API Test</title>
+  <script>
+    // Call the GET /api/hello endpoint
+    function getHello() {
+      fetch('/api/hello')
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('helloResult').innerText = JSON.stringify(data);
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    // Call the POST /api/echo endpoint
+    function postEcho() {
+      const message = document.getElementById('echoInput').value;
+      fetch('/api/echo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: message })
+      })
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('echoResult').innerText = JSON.stringify(data);
+        })
+        .catch(error => console.error('Error:', error));
+    }
+  </script>
+</head>
+<body>
+  <h1>Test Captive Portal API Endpoints</h1>
+
+  <section>
+    <h2>GET /api/hello</h2>
+    <button onclick="getHello()">Get Hello</button>
+    <pre id="helloResult"></pre>
+  </section>
+
+  <section>
+    <h2>POST /api/echo</h2>
+    <input type="text" id="echoInput" placeholder="Enter a message">
+    <button onclick="postEcho()">Send Echo</button>
+    <pre id="echoResult"></pre>
+  </section>
+</body>
+</html>

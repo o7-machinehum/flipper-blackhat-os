@@ -1,7 +1,0 @@
-config BR2_PACKAGE_OPENNDS
-    bool "opennds"
-    help
-        opennds
-
-    select BR2_PACKAGE_NFTABLES
-    select BR2_PACKAGE_LIBMICROHTTPD
