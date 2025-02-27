@@ -90,18 +90,24 @@ function evil_portal() {
     INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { echo "Connect to WiFi first"; exit 1; }
     AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { echo "Create AP first"; exit 1; }
 
-	echo 1 > /proc/sys/net/ipv4/ip_forward
+    echo 1 > /proc/sys/net/ipv4/ip_forward
 
-	nft add table inet filter
-	nft add chain inet filter input { type filter hook input priority 0 \; policy accept \; }
-	nft add rule inet filter input iif "$AP_NIC" ct state established,related accept
-	nft add rule inet filter input iif "$AP_NIC" ip protocol udp udp dport 53 accept
-	nft add rule inet filter input iif "$AP_NIC" ip protocol udp udp dport 67 accept
-	nft add rule inet filter input iif "$AP_NIC" ip protocol tcp tcp dport 80 accept
-	nft add rule inet filter input iif "$AP_NIC" reject
+    nft add table inet filter
+    nft add chain inet filter input { type filter hook input priority 0 \; policy accept \; }
+    nft add rule inet filter input iif "$AP_NIC" ct state established,related accept
+    nft add rule inet filter input iif "$AP_NIC" ip protocol udp udp dport 53 accept
+    nft add rule inet filter input iif "$AP_NIC" ip protocol udp udp dport 67 accept
+    nft add rule inet filter input iif "$AP_NIC" ip protocol tcp tcp dport 80 accept
+    nft add rule inet filter input iif "$AP_NIC" reject
 
+    kill -9 $(pidof dnsmasq)
     dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F &
-	# Start https server
+
+    kill -9 $(pidof nginx)
+    nginx &
+
+    kill -9 $(pidof evil_portal)
+    /usr/bin/evil_portal &
 }
 
 function set_param() {
