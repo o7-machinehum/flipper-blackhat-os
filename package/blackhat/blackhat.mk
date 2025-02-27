@@ -12,7 +12,6 @@ endef
 define BLACKHAT_INSTALL_TARGET_CMDS
     $(INSTALL) -D -m 0755 $(@D)/evil_portal $(TARGET_DIR)/usr/bin/evil_portal
     $(INSTALL) -D -m 0755 $(@D)/blackhat.sh $(TARGET_DIR)/usr/bin/bh
-    $(INSTALL) -D -m 0755 $(@D)/service.sh $(TARGET_DIR)/usr/bin/service
     cp $(@D)/blackhat.conf $(TARGET_DIR)/etc/blackhat.conf
 endef
 
