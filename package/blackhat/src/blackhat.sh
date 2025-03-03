@@ -92,13 +92,13 @@ function evil_portal() {
 
     echo 1 > /proc/sys/net/ipv4/ip_forward
 
-    nft add table inet filter
-    nft add chain inet filter input { type filter hook input priority 0 \; policy accept \; }
-    nft add rule inet filter input iif "$AP_NIC" ct state established,related accept
-    nft add rule inet filter input iif "$AP_NIC" ip protocol udp udp dport 53 accept
-    nft add rule inet filter input iif "$AP_NIC" ip protocol udp udp dport 67 accept
-    nft add rule inet filter input iif "$AP_NIC" ip protocol tcp tcp dport 80 accept
-    nft add rule inet filter input iif "$AP_NIC" reject
+    # nft add table inet filter
+    # nft add chain inet filter input { type filter hook input priority 0 \; policy accept \; }
+    # nft add rule inet filter input iif "$AP_NIC" ct state established,related accept
+    # nft add rule inet filter input iif "$AP_NIC" ip protocol udp udp dport 53 accept
+    # nft add rule inet filter input iif "$AP_NIC" ip protocol udp udp dport 67 accept
+    # nft add rule inet filter input iif "$AP_NIC" ip protocol tcp tcp dport 80 accept
+    # nft add rule inet filter input iif "$AP_NIC" reject
 
     kill -9 $(pidof dnsmasq)
     dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F &
