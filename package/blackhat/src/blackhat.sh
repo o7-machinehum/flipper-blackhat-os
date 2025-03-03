@@ -94,21 +94,28 @@ function evil_portal() {
 
     nft flush ruleset
 
+    # Set up the filter table (Mode 1)
     nft add table ip filter
     nft add chain ip filter input  '{ type filter hook input priority 0; policy accept; }'
     nft add chain ip filter forward '{ type filter hook forward priority 0; policy accept; }'
     nft add chain ip filter output '{ type filter hook output priority 0; policy accept; }'
 
-    # Set up NAT for outbound traffic:
+    # Set up the NAT table and chain for masquerading (Mode 2)
     nft add table ip nat
     nft add chain ip nat postrouting '{ type nat hook postrouting priority 100; }'
 
-    kill -9 $(pidof dnsmasq)
-    kill -9 $(pidof nginx)
-    kill -9 $(pidof evil_portal)
+    # This will allow
+    # nft add rule ip nat postrouting oifname wlan1 ip saddr 192.168.2.217 masquerade
 
+    kill -9 $(pidof dnsmasq) 2>/dev/null
     dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F &
+
+    kill -9 $(pidof nginx) 2>/dev/null
+    mkdir /var/log/nginx 2>/dev/null
     nginx &
+
+    kill -9 $(pidof evil_portal) 2>/dev/null
+    ip link set lo up
     /usr/bin/evil_portal &
 }
 

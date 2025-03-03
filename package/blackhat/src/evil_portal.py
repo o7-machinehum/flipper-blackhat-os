@@ -1,31 +1,31 @@
 #!/usr/bin/python
 
-from flask import Flask, jsonify, request
 import os
-
-ap_nic = None
-inet_nic = None
+from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
 @app.route('/api/hello', methods=['GET'])
 def hello():
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-    cmd = f"nft add rule ip nat postrouting oifname \"{inet_nic}\" ip saddr {ip} masquerade"
-    print(cmd)
+    print("Restarting dnsmasq")
+    cmd = "kill -9 $(pidof dnsmasq)"
     os.system(cmd)
-    return jsonify(message="Hello from Flask!")
+
+    with open("/run/inet_nic") as f:
+        nic = f.read().strip("\n")
+
+    cmd = f"nft add rule ip nat postrouting oifname {nic} masquerade"
+    os.system(cmd)
+
+    cmd = "dnsmasq -C /etc/dnsmasq-allow.conf"
+    os.system(cmd)
+
+    return jsonify({'ip': request.remote_addr})
 
 @app.route('/api/echo', methods=['POST'])
 def echo():
     data = request.get_json()
     return jsonify(received=data)
 
-def fread(fname):
-    with open(fname) as f:
-        return f.read().strip("\n")
-
 if __name__ == '__main__':
-    ap_nic = fread("/run/ap_nic")
-    inet_nic = fread("/run/inet_nic")
     app.run(host='0.0.0.0', port=8080)
