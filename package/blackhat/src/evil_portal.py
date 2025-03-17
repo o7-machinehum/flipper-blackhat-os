@@ -10,6 +10,9 @@ def credz():
     data = request.get_json()
     print(data)
 
+    client_ip = request.headers.get('X-Real-IP', request.remote_addr)
+    print(client_ip)
+
     print("Restarting dnsmasq")
     cmd = "kill -9 $(pidof dnsmasq)"
     os.system(cmd)
