@@ -24,6 +24,7 @@ rm $LOG_F 2>/dev/null
 function print_help() {
     echo "Commands:"
     echo "useage: bh wifi connect wlan0"
+    echo "        bh set PASS 'my_wifi_password'"
     echo "  set"
     echo "    SSID            Set SSID of WiFi network to connect to"
     echo "    PASS            Set password for WiFi network: SSID"
@@ -111,7 +112,7 @@ function evil_portal() {
 }
 
 function set_param() {
-    sed -i "/^$1=/c$1=\"$2\"" ${CONFIG_F}
+    sed -i "/^$1=/c$1=\'$2\'" ${CONFIG_F}
 }
 
 function check() {
