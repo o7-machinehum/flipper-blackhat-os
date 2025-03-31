@@ -8,22 +8,18 @@ app = Flask(__name__)
 @app.route('/api/username', methods=['POST'])
 def credz():
     data = request.get_json()
-    print(data)
-
     client_ip = request.headers.get('X-Real-IP', request.remote_addr)
-    print(client_ip)
+
+    print(f"{data}: {client_ip}")
 
     print("Restarting dnsmasq")
     cmd = "kill -9 $(pidof dnsmasq)"
     os.system(cmd)
 
-    with open("/run/inet_nic") as f:
-        nic = f.read().strip("\n")
+    cmd = "nft add element ip nat allowed_ips { "
+    cmd += client_ip
+    cmd += " }"
 
-    cmd = f"nft add rule ip nat postrouting oifname {nic} masquerade"
-    os.system(cmd)
-
-    cmd = "dnsmasq -C /etc/dnsmasq-allow.conf"
     os.system(cmd)
 
     return jsonify(received=data)

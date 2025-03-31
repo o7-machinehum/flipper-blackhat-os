@@ -92,12 +92,9 @@ function evil_portal() {
     AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { echo "Create AP first"; exit 1; }
 
     echo 1 > /proc/sys/net/ipv4/ip_forward
-
-    nft flush ruleset
-    nft add table ip nat
-    nft add chain ip nat prerouting '{ type nat hook prerouting priority 0; }'
-
-    ip addr add 192.168.2.2/24 dev $AP_NIC
+    nft -f /etc/ep-rules.nft
+    nft add rule ip nat postrouting oif $INET_NIC ip saddr @allowed_ips masquerade
+    cp /mnt/index.html /var/www/
 
     kill -9 $(pidof dnsmasq) 2>/dev/null
     dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F &

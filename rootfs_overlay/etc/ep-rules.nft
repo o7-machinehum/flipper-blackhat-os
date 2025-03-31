@@ -1,0 +1,27 @@
+flush ruleset
+
+table ip nat {
+    set allowed_ips {
+        type ipv4_addr
+        elements = { 192.168.2.1 }
+    }
+
+    chain prerouting {
+       type nat hook prerouting priority 0; policy accept;
+       udp dport 53 ip saddr @allowed_ips dnat to 8.8.8.8
+    }
+
+    chain postrouting {
+        type nat hook postrouting priority 100; policy accept;
+        # oif "wlanX" ip saddr @allowed_ips masquerade
+    }
+}
+
+table ip filter {
+    chain input {
+        type filter hook input priority filter; policy accept;
+        iif lo accept
+    }
+}
+
+# nft add element ip nat allowed_ips { 192.168.1.2 }
