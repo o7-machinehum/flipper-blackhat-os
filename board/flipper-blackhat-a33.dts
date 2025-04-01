@@ -11,7 +11,7 @@
 
     backlight: backlight {
         compatible = "gpio-backlight";
-        gpios = <&pio 7 8 GPIO_ACTIVE_HIGH>; /* PH8 */
+        gpios = <&pio 7 1 GPIO_ACTIVE_HIGH>; /* PH1 */
         default-on;
     };
 
@@ -176,7 +176,7 @@
     vcc-dsi-supply = <&reg_vcc3v3>;
     status = "okay";
     panel: panel@0 {
-        compatible = "densitron,dmt028vghmcmi-1a", "sitronix,st7701";
+        compatible = "displaymodule, tft34-485";
         reg = <0>;
         backlight = <&backlight>;
         VCC-supply = <&reg_vcc3v3>;
