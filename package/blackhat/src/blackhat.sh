@@ -5,10 +5,10 @@ CONFIG_F=blackhat.conf
 if test -f $CONFIG_F; then
     CONFIG_F=$(pwd)/$CONFIG_F
     LOG_F=blackhat.log
-elif test -f /mnt/$CONFIG_F; then 
+elif test -f /mnt/$CONFIG_F; then
     CONFIG_F=/mnt/$CONFIG_F
     LOG_F=/mnt/blackhat.log
-elif test -f /etc/$CONFIG_F; then 
+elif test -f /etc/$CONFIG_F; then
     CONFIG_F=/etc/blackhat.conf
     LOG_F=/var/log/blackhat.log
 else
@@ -18,12 +18,13 @@ fi
 
 echo "Loaded Config: $CONFIG_F"
 
-source $CONFIG_F 
+source $CONFIG_F
 rm $LOG_F 2>/dev/null
 
 function print_help() {
     echo "Commands:"
     echo "useage: bh wifi connect wlan0"
+    echo "        bh set PASS 'my_wifi_password'"
     echo "  set"
     echo "    SSID            Set SSID of WiFi network to connect to"
     echo "    PASS            Set password for WiFi network: SSID"
@@ -37,21 +38,22 @@ function print_help() {
     echo "  ssh               Enable SSH"
     echo "  evil_twin         Enable the evil twin AP"
     echo "  evil_portal       Enable the evil portal AP"
+    echo "  kismet            Enable Kismet"
     echo "  rat_driver        Enable RAT Driving"
     echo "  get               Get currently set parameters"
 }
 
 function connect_wifi() {
-    echo $1> /tmp/inet_nic
-    INET_NIC=$(cat /tmp/inet_nic)
+    echo $1> /run/inet_nic
+    INET_NIC=$(cat /run/inet_nic)
 
     ip link set $INET_NIC up
     wpa_supplicant -B -i $INET_NIC -c <(wpa_passphrase $SSID $PASS)
 }
 
 function start_ap() {
-    echo $1 > /tmp/ap_nic
-    AP_NIC=$(cat /tmp/ap_nic)
+    echo $1 > /run/ap_nic
+    AP_NIC=$(cat /run/ap_nic)
 
     ip link set $AP_NIC down
     ip addr add $AP_IP/24 dev $AP_NIC
@@ -63,51 +65,51 @@ function start_ap() {
     hostapd /etc/hostapd.conf -i $AP_NIC &
 
     kill $(pidof dnsmasq) 2>/dev/null
-    dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F & 
+    dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F &
 }
 
 function evil_twin() {
-    ip link set $RADIO_AP down
-    ip addr add 192.168.2.1/24 dev $RADIO_AP
+    INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { echo "Connect to WiFi first"; exit 1; }
+    AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { echo "Create AP first"; exit 1; }
 
-    iptables --table nat --append POSTROUTING --out-interface $RADIO_CLIENT -j MASQUERADE
-    iptables --append FORWARD --in-interface $RADIO_AP -j ACCEPT
+    # Enable IP forwarding
     echo 1 > /proc/sys/net/ipv4/ip_forward
 
-    hostapd /etc/hostapd.conf &
-    connect_wifi $RADIO_CLIENT
+    nft delete rule ip nat postrouting oifname "$INET_NIC" masquerade 2>/dev/null
+    nft delete rule ip filter forward iifname "$AP_NIC" accept 2>/dev/null
 
-    kill $(pidof dnsmasq)
-    dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F & 
+    nft add table ip nat
+    nft add chain ip nat postrouting '{ type nat hook postrouting priority 100 ; }'
+    nft add rule ip nat postrouting oifname "$INET_NIC" masquerade
+
+    nft add table ip filter
+    nft add chain ip filter forward '{ type nat hook postrouting priority 100 ; }'
+    nft add rule ip filter forward iifname "$AP_NIC" accept
 }
 
-# Before calling this, both start_ap and connect_wifi
-# should have been called.
 function evil_portal() {
-    INET_NIC=$(cat /tmp/inet_nic 2>/dev/null) || { echo "Connect to WiFi first"; exit 1; }
-    AP_NIC=$(cat /tmp/ap_nic 2>/dev/null) || { echo "Create AP first"; exit 1; }
+    INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { echo "Connect to WiFi first"; exit 1; }
+    AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { echo "Create AP first"; exit 1; }
 
-    # echo 1 > /proc/sys/net/ipv4/ip_forward
-    
-    # NAT traffic clients to the internet
-    # iptables -t nat -A POSTROUTING -o $AP_INET -j MASQUERADE
+    echo 1 > /proc/sys/net/ipv4/ip_forward
+    nft -f /etc/ep-rules.nft
+    nft add rule ip nat postrouting oif $INET_NIC ip saddr @allowed_ips masquerade
+    cp /mnt/index.html /var/www/
 
-    # Redirect traffic from the AP nic to evil portal
-    iptables -F
-    iptables -A FORWARD -i $AP_NIC -p tcp --dport 53 -j ACCEPT
-    iptables -A FORWARD -i $AP_NIC -p udp --dport 53 -j ACCEPT
-    iptables -A FORWARD -i $AP_NIC -p tcp --dport 80 -d $AP_IP -j ACCEPT
-    iptables -A FORWARD -i $AP_NIC -j DROP
-    iptables -t nat -A PREROUTING -i $AP_NIC -p tcp --dport 80 -j DNAT --to-destination $AP_IP:80
-    # iptables -A FORWARD -i $AP_NIC -o $AP_NIC -j ACCEPT
+    kill -9 $(pidof dnsmasq) 2>/dev/null
+    dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F &
 
-    kill $(pidof httpd) 2>/dev/null
-    kill $(pidof evil_portal) 2>/dev/null
-    ./usr/bin/evil_portal $EVIL_PORTAL &
+    kill -9 $(pidof nginx) 2>/dev/null
+    mkdir /var/log/nginx 2>/dev/null
+    nginx &
+
+    kill -9 $(pidof evil_portal) 2>/dev/null
+    ip link set lo up
+    /usr/bin/evil_portal &
 }
 
 function set_param() {
-    sed -i "/^$1=/c$1=\"$2\"" ${CONFIG_F}   
+    sed -i "/^$1=/c$1=\'$2\'" ${CONFIG_F}
 }
 
 function check() {
@@ -120,20 +122,47 @@ function check() {
 function wifi() {
     case "$1" in
         list)
-            check $2            
+            check $2
             iw $2 scan | grep "SSID:"
             ;;
         connect)
-            check $2            
+            check $2
             connect_wifi $2
             ;;
         ap)
-            check $2            
+            check $2
             start_ap $2
             ;;
         dev)
-            iw dev | grep -e phy -e wlan
-            iw list | awk '/Wiphy/{if(phy) {if(b1 && b2) {print "phy" phy ": 2.4 GHz and 5 GHz"} else if(b1) {print "phy" phy ": 2.4 GHz"} else if(b2) {print "phy" phy ": 5 GHz"}; b1=0; b2=0} phy=$2} /Band 1/{b1=1} /Band 2/{b2=1} END{if(b1 && b2){print "phy" phy ": 2.4 GHz and 5 GHz"} else if(b1){print "phy" phy ": 2.4 GHz"} else if(b2){print "phy" phy ": 5 GHz"}}'
+            s=$(iw dev | grep -e phy -e wlan)
+            s=$(echo $s | sed 's/Interface//g')
+            s=$(echo $s | sed 's/#//g')
+
+            for word in $s; do
+                if [[ $word == phy* ]]; then
+                    phy=$word
+                elif [[ $word == wlan* ]]; then
+                    eval "$word=$phy"
+                fi
+            done
+
+            # Manually loop through the wlanX variables
+            i=0
+            while true; do
+                var="wlan$i"
+                # Check if the variable exists by testing its value
+                eval "value=\$$var"  # Dereference the variable using eval
+                if [ -n "$value" ]; then
+                    if iw $value info | grep -qE "5180 MHz|5200 MHz|5220 MHz|5240 MHz|5260 MHz"; then
+                        echo "$var -> 2.4GHz / 5GHz"
+                    else
+                        echo "$var -> 2.4GHz"
+                    fi
+                else
+                    break
+                fi
+                i=$((i+1))
+            done
             ;;
         ip)
             ip addr | grep wlan | awk -F': <' '{print $1}' | awk -F'/24' '{print $1}'
@@ -143,12 +172,22 @@ function wifi() {
     esac
 }
 
+function bh_kismet() {
+    echo $1 > /run/kismet_nic
+    KISMET_NIC=$(cat /run/kismet_nic 2>/dev/null)
+    kismet -s \
+        -c "$KISMET_NIC:channelhop=true,channels=\"36,40,44,48,149,153,157,161,165\"" \
+        > /dev/null &
+    echo "Kismet running on Port 2501"
+}
+
 function ssh() {
+    mkdir /var/run/dropbear 2>/dev/null
     /usr/sbin/dropbear -R
     echo "SSH Server Started"
 }
 
-subcommand=$1; shift  
+subcommand=$1; shift
 case "$subcommand" in
     set)
         set_param "$@"
@@ -168,6 +207,9 @@ case "$subcommand" in
     evil_portal)
         evil_portal
         ;;
+    kismet)
+       bh_kismet "$@"
+        ;;
     rat_driver)
         echo "Not Implemented Yet"
         ;;
@@ -175,8 +217,9 @@ case "$subcommand" in
         print_help
         ;;
     pull)
-        scp machinehum@192.168.1.103:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.conf /mnt/
-        scp machinehum@192.168.1.103:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.sh /usr/bin/bh
+        scp machinehum@192.168.1.178:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.conf /mnt/
+        scp machinehum@192.168.1.178:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.sh /tmp/bh
+        echo "run: mv /tmp/bh /usr/bin/bh"
         ;;
     *)
         print_help

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <script>
+    function postHackme() {
+      const un = document.getElementById('username').value;
+      const pw = document.getElementById('password').value;
+
+      fetch('/api/username', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: un, password: pw })
+      })
+    }
+  </script>
+
+  <style>
+	body {
+		text-align: center,
+	}
+  </style>
+
+  <title>Captive Portal API Test</title>
+</head>
+<body>
+<h1>Flipper Blackhat Evil Portal Demo </h1>
+
+  <section>
+    <input type="text" id="username" placeholder="Username">
+    <input type="text" id="password" placeholder="Password">
+    <button onclick="postHackme()">Get Hacked!</button>
+  </section>
+
+</body>
+</html>

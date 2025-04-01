@@ -1,0 +1,30 @@
+name: Push
+
+on:
+  push:
+    branches: '**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+            sudo apt-get install -y make binutils build-essential diffutils gcc g++ patch gzip bzip2 perl tar cpio unzip rsync bc findutils
+
+      - name: Build
+        run: |
+            cd buildroot && make BR2_EXTERNAL=$PWD/../ flipper_blackhat_a33_defconfig && make
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: push
+          path: buildroot/output/images/sdcard.img

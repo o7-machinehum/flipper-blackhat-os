@@ -1,0 +1,8 @@
+--- a/arch/arm/boot/dts/Makefile
++++ b/arch/arm/boot/dts/Makefile
+@@ -39,3 +39,5 @@
+ subdir-y += vt8500
+ subdir-y += xen
+ subdir-y += xilinx
++
++dtb-$(CONFIG_MACH_SUN8I) += flipper-blackhat-a33.dtb
