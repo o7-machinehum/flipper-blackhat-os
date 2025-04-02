@@ -28,8 +28,8 @@
         compatible = "gpio-leds";
 
         led {
-            label = "a33-olinuxino:green:usr";
-            gpios = <&pio 1 7 GPIO_ACTIVE_HIGH>;
+            label = "blackhat:green:usr";
+            gpios = <&r_pio 0 2 GPIO_ACTIVE_HIGH>; /* PL2 */
         };
     };
 
