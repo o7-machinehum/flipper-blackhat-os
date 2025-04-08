@@ -9,6 +9,12 @@
     model = "Flipper Blackhat";
     compatible = "allwinner,sun8i-a33";
 
+    backlight: backlight {
+        compatible = "gpio-backlight";
+        gpios = <&pio 7 1 GPIO_ACTIVE_HIGH>; /* PH1 */
+        default-on;
+    };
+
     aliases {
         ethernet0 = &rtl8723ds;
         serial0 = &uart0;
@@ -124,3 +130,59 @@
     status = "okay";
 };
 
+&pio {
+    vcc-pa-supply = <&reg_vcc3v3>;
+    vcc-pb-supply = <&reg_vcc3v3>;
+    vcc-pc-supply = <&reg_vcc3v3>;
+    vcc-pd-supply = <&reg_vcc3v3>;
+    vcc-pe-supply = <&reg_vcc3v3>;
+    vcc-pf-supply = <&reg_vcc3v3>;
+    vcc-pg-supply = <&reg_vcc3v3>;
+    vcc-ph-supply = <&reg_vcc3v3>;
+};
+
+&dphy {
+    status = "okay";
+};
+
+&drc0 {
+    status = "okay";
+};
+
+&tcon0 {
+    status = "okay";
+};
+
+
+&tcon0_out {
+    status = "okay";
+};
+
+
+&mali {
+    status = "okay";
+};
+
+&de {
+    status = "okay";
+};
+
+
+&be0 {
+    status = "okay";
+};
+
+&dsi {
+    vcc-dsi-supply = <&reg_vcc3v3>;
+    status = "okay";
+    panel: panel@0 {
+        compatible = "displaymodule, tft34-485";
+        reg = <0>;
+        backlight = <&backlight>;
+        VCC-supply = <&reg_vcc3v3>;
+        IOVCC-supply = <&reg_vcc3v3>;
+        pinctrl-names = "default";
+        reset-gpios = <&pio 7 4 GPIO_ACTIVE_LOW>; /* PH4 */
+        status = "okay";
+    };
+};
