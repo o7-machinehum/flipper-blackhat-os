@@ -16,44 +16,44 @@ else
     exit
 fi
 
-echo "Loaded Config: $CONFIG_F"
-
 source $CONFIG_F
 rm $LOG_F 2>/dev/null
 
 function print_help() {
     echo "Commands:"
-    echo "useage: bh wifi connect wlan0"
+    echo "useage: bh wifi connect"
     echo "        bh set PASS 'my_wifi_password'"
     echo "  set"
-    echo "    SSID            Set SSID of WiFi network to connect to"
-    echo "    PASS            Set password for WiFi network: SSID"
-    echo "    AP_SSID         Set SSID of WiFi network you're creating"
-    echo "  wifi              Connect to a WiFi network"
-    echo "    list            List WiFi APs"
-    echo "    con <interface> Connect to WiFi AP"
-    echo "    dev             List devices"
-    echo "    ap <interface>  Enable Access Point"
-    echo "    ip              Get IP Address"
-    echo "  ssh               Enable SSH"
-    echo "  evil_twin         Enable the evil twin AP"
-    echo "  evil_portal       Enable the evil portal AP"
-    echo "  kismet            Enable Kismet"
-    echo "  rat_driver        Enable RAT Driving"
-    echo "  get               Get currently set parameters"
+    echo "    SSID              Set SSID of WiFi network to connect to"
+    echo "    PASS              Set password for WiFi network: SSID"
+    echo "    AP_SSID           Set SSID of WiFi network you're creating"
+    echo "  wifi"
+    echo "    list <iface>      List WiFi APs"
+    echo "    con               Connect to WiFi AP"
+    echo "    dev               List devices"
+    echo "    ap                Enable Access Point"
+    echo "    ip                Get IP Address"
+    echo "  ssh                 Enable SSH"
+    echo "  evil_twin           Enable the evil twin AP"
+    echo "  evil_portal         Enable the evil portal AP"
+    echo "  kismet              Enable Kismet"
+    echo "  rat_driver          Enable RAT Driving"
+    echo "  get                 Get currently set parameters"
 }
 
 function connect_wifi() {
-    echo $1> /run/inet_nic
-    INET_NIC=$(cat /run/inet_nic)
+    INET_NIC=$(bh wifi dev | grep -v "5GHz" | awk '{print $1}' | grep wlan | head -n1)
+    echo $INET_NIC > /run/inet_nic
+    echo INET_NIC: $INET_NIC
 
     ip link set $INET_NIC up
     wpa_supplicant -B -i $INET_NIC -c <(wpa_passphrase $SSID $PASS)
 }
 
 function start_ap() {
-    echo $1 > /run/ap_nic
-    AP_NIC=$(cat /run/ap_nic)
+    AP_NIC=$(bh wifi dev | grep "5GHz" | awk '{print $1}' | head -n1)
+    echo $AP_NIC > /run/ap_nic
+    echo AP_NIC: $AP_NIC
 
     ip link set $AP_NIC down
     ip addr add $AP_IP/24 dev $AP_NIC
@@ -69,8 +69,8 @@ function start_ap() {
 }
 
 function evil_twin() {
-    INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { echo "Connect to WiFi first"; exit 1; }
-    AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { echo "Create AP first"; exit 1; }
+    INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { connect_wifi; INET_NIC=$(cat /run/inet_nic); }
+    AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { start_ap; AP_NIC=$(cat /run/ap_nic); }
 
     # Enable IP forwarding
     echo 1 > /proc/sys/net/ipv4/ip_forward
@@ -88,8 +88,8 @@ function evil_twin() {
 }
 
 function evil_portal() {
-    INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { echo "Connect to WiFi first"; exit 1; }
-    AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { echo "Create AP first"; exit 1; }
+    INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { connect_wifi; INET_NIC=$(cat /run/inet_nic); }
+    AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { start_ap; AP_NIC=$(cat /run/ap_nic); }
 
     echo 1 > /proc/sys/net/ipv4/ip_forward
     nft -f /etc/ep-rules.nft
@@ -125,13 +125,11 @@ function wifi() {
             check $2
             iw $2 scan | grep "SSID:"
             ;;
-        connect)
-            check $2
-            connect_wifi $2
+        connect | con)
+            connect_wifi
             ;;
         ap)
-            check $2
-            start_ap $2
+            start_ap
             ;;
         dev)
             s=$(iw dev | grep -e phy -e wlan)
@@ -185,6 +183,7 @@ function ssh() {
     mkdir /var/run/dropbear 2>/dev/null
     /usr/sbin/dropbear -R
     echo "SSH Server Started"
+    bh wifi ip
 }
 
 subcommand=$1; shift
@@ -193,6 +192,7 @@ case "$subcommand" in
         set_param "$@"
         ;;
     get)
+        echo "Loaded Config: $CONFIG_F"
         cat $CONFIG_F
         ;;
     wifi)
