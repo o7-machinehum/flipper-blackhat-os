@@ -1,0 +1,3 @@
+#!/bin/sh
+
+echo 1 > /sys/devices/platform/leds/leds/blackhat:green:usr/brightness
