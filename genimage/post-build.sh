@@ -10,6 +10,7 @@ cp $CONFIG_DIR/../genimage/readme.txt $BINARIES_DIR/
 cp $CONFIG_DIR/../rootfs_overlay/var/www/index.html $BINARIES_DIR/
 cp $CONFIG_DIR/../package/blackhat/src/blackhat.conf $BINARIES_DIR/
 cp $CONFIG_DIR/../package/blackhat/src/hello.py $BINARIES_DIR/scripts/
+cp $CONFIG_DIR/../package/blackhat/src/port_scan.py $BINARIES_DIR/scripts/
 
 rm -f $TARGET_DIR/etc/init.d/S50dropbear
 rm -f $TARGET_DIR/etc/init.d/S50nginx
