@@ -39,6 +39,9 @@ function print_help() {
     echo "  kismet              Enable Kismet"
     echo "  rat_driver          Enable RAT Driving"
     echo "  get                 Get currently set parameters"
+    echo "  script"
+    echo "    scan"
+    echo "    run <script>"
 }
 
 function connect_wifi() {
@@ -170,6 +173,20 @@ function wifi() {
     esac
 }
 
+
+function script() {
+    case "$1" in
+        scan)
+            ls -1 --color=never /mnt/scripts/
+            ;;
+        run)
+            ./mnt/scripts/$2
+            ;;
+        *)
+            print_help
+    esac
+}
+
 function bh_kismet() {
     echo $1 > /run/kismet_nic
     KISMET_NIC=$(cat /run/kismet_nic 2>/dev/null)
@@ -220,6 +237,9 @@ case "$subcommand" in
         scp machinehum@192.168.1.178:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.conf /mnt/
         scp machinehum@192.168.1.178:/home/machinehum/projects/flipper-blackhat-os/package/blackhat/src/blackhat.sh /tmp/bh
         echo "run: mv /tmp/bh /usr/bin/bh"
+        ;;
+    script)
+        script "$@"
         ;;
     *)
         print_help
