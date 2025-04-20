@@ -12,10 +12,6 @@ def credz():
 
     print(f"{data}: {client_ip}")
 
-    print("Restarting dnsmasq")
-    cmd = "kill -9 $(pidof dnsmasq)"
-    os.system(cmd)
-
     cmd = "nft add element ip nat allowed_ips { "
     cmd += client_ip
     cmd += " }"

