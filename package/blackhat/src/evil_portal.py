@@ -12,6 +12,9 @@ def credz():
 
     print(f"{data}: {client_ip}")
 
+    with open("/mnt/ep_logs.txt", "a") as f:
+        f.write(f"{data}: {client_ip}\n")
+
     cmd = "nft add element ip nat allowed_ips { "
     cmd += client_ip
     cmd += " }"
