@@ -37,7 +37,7 @@ function print_help() {
     echo "  evil_twin           Enable the evil twin AP"
     echo "  evil_portal         Enable the evil portal AP"
     echo "  kismet              Enable Kismet"
-    echo "  rat_driver          Enable RAT Driving"
+    echo "  test_inet           Ping google.com"
     echo "  get                 Get currently set parameters"
     echo "  script"
     echo "    scan"
@@ -227,8 +227,8 @@ case "$subcommand" in
     kismet)
        bh_kismet "$@"
         ;;
-    rat_driver)
-        echo "Not Implemented Yet"
+    test_inet)
+        ping google.com -w 3
         ;;
     help)
         print_help
