@@ -6,6 +6,7 @@ import re
 
 SUDO = False
 FLOC = "/mnt/loot/"
+AWK_F = "/root/iw.awk"
 
 def bash(cmd, sudo=False):
     if sudo:
@@ -15,8 +16,7 @@ def bash(cmd, sudo=False):
 
 def get_aps(dev):
     aps_d = {}
-    awk_f = "../../../rootfs_overlay/root/iw.awk"
-    aps = bash(f"iw dev {dev} scan | awk -f {awk_f}", SUDO)
+    aps = bash(f"iw dev {dev} scan | awk -f {AWK_F}", SUDO)
 
     for ap in aps.split("\n")[1:]:
         try:
@@ -28,6 +28,7 @@ def get_aps(dev):
     return aps_d
 
 def connect_to_wifi(dev, ssid):
+    print(f"Conecting to: {ap}")
     bash(f'iw dev {dev} connect "{ssid}"', SUDO)
 
 def disconnect_from_wifi(dev):
@@ -61,13 +62,18 @@ def port_scan(ip):
     return bash(f"nmap -sV {base_ip}-255", SUDO)
 
 if __name__ == '__main__':
+    system = bash("cat /etc/os-release")
+    if "Buildroot" not in system.split("\n")[0]:
+        FLOC = "~/loot/"
+        AWK_F = "../../../rootfs_overlay/root/iw.awk"
+        SUDO = True
+
     dev = "wlan1"
     aps = get_aps(dev)
-    bash(f"mkdir {FLOC} > /dev/null", False)
+    bash(f"mkdir {FLOC} 2> /dev/null", False)
 
     for ap in aps:
         if aps[ap] == "Open":
-            print(f"Conecting to: {ap}")
             connect_to_wifi(dev, ap)
             if(is_connected(dev)):
                 ip = get_ip(dev)

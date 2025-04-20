@@ -180,7 +180,7 @@ function script() {
             ls -1 --color=never /mnt/scripts/
             ;;
         run)
-            ./mnt/scripts/$2
+            /mnt/scripts/$2
             ;;
         *)
             print_help
