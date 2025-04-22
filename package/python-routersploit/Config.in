@@ -1,0 +1,10 @@
+config BR2_PACKAGE_PYTHON_ROUTERSPLOIT
+    bool "python-routersploit"
+    help
+        Exploitation Framework for Embedded Devices
+
+    select BR2_PACKAGE_PYTHON_REQUESTS
+    select BR2_PACKAGE_PYTHON_PARAMIKO
+    select BR2_PACKAGE_PYTHON_PYSNMP
+    select BR2_PACKAGE_PYTHON_PYCRYPTODOMEX
+    select BR2_PACKAGE_PYTHON_TELNETLIB3
