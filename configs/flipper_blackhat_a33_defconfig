@@ -1,7 +1,14 @@
 BR2_arm=y
 BR2_cortex_a7=y
 BR2_PACKAGE_HOST_LINUX_HEADERS_CUSTOM_6_12=y
+BR2_BINUTILS_VERSION_2_42_X=y
 BR2_TOOLCHAIN_BUILDROOT_CXX=y
+BR2_CURL="curl -q --ftp-pasv --retry 3"
+BR2_WGET="wget -nd -t 3"
+BR2_SVN="svn --non-interactive"
+BR2_SCP="scp"
+BR2_SFTP="sftp"
+BR2_GLOBAL_PATCH_DIR="$(BR2_EXTERNAL_BLACKHAT_PATH)/patches/global/"
 BR2_TARGET_GENERIC_HOSTNAME="flipper-blackhat"
 BR2_TARGET_GENERIC_ISSUE="Welcome to the Flipper Blackhat"
 BR2_ROOTFS_DEVICE_CREATION_DYNAMIC_EUDEV=y
