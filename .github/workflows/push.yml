@@ -18,6 +18,11 @@ jobs:
       - name: Install dependencies
         run: |
             sudo apt-get install -y make binutils build-essential diffutils gcc g++ patch gzip bzip2 perl tar cpio unzip rsync bc findutils cmake
+            sudo rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+      - name: Check Disk
+        run: |
+            df -h
 
       - name: Build
         run: |
