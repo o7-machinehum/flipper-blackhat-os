@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-PYTHON_ROUTERSPLOIT_VERSION = 3.4.7
+PYTHON_ROUTERSPLOIT_VERSION = v3.4.7
 
 PYTHON_ROUTERSPLOIT_SITE = https://github.com/threat9/routersploit
 PYTHON_ROUTERSPLOIT_SITE_METHOD = git
