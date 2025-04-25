@@ -18,10 +18,23 @@ jobs:
       - name: Install dependencies
         run: |
             sudo apt-get install -y make binutils build-essential diffutils gcc g++ patch gzip bzip2 perl tar cpio unzip rsync bc findutils cmake
+            sudo rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+      - name: Disable Swapfile
+        run: |
+            swapfile=$(sudo swapon --show=NAME --noheadings); echo "$swapfile"
+            sudo swapoff "$swapfile"
+
+      - name: Get Disk
+        run: |
+            df -h
+            free
 
       - name: Build
         run: |
-            cd buildroot && make BR2_EXTERNAL=$PWD/../ flipper_blackhat_a33_defconfig && make
+            cd buildroot
+            make BR2_EXTERNAL=$PWD/../ flipper_blackhat_a33_defconfig
+            make
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
