@@ -24,6 +24,16 @@ jobs:
         run: |
             swapfile=$(sudo swapon --show=NAME --noheadings); echo "$swapfile"
             sudo swapoff "$swapfile"
+            sudo rm -rf $swapfile
+
+      - name: Remove apt cache
+        run: |
+            sudo apt clean
+
+      - name: Clean up Docker
+        run: |
+            docker system prune -a -v
+            sudo docker system prune -a -v
 
       - name: Get Disk
         run: |
