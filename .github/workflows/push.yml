@@ -35,7 +35,7 @@ jobs:
             docker system prune -a -f
             sudo docker system prune -a -f
 
-        name: Free disk space
+      - name: Free disk space
         run: |
           sudo docker rmi $(docker image ls -aq) >/dev/null 2>&1 || true
           sudo rm -rf \
