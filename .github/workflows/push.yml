@@ -32,8 +32,8 @@ jobs:
 
       - name: Clean up Docker
         run: |
-            docker system prune -a -v
-            sudo docker system prune -a -v
+            docker system prune -a -f
+            sudo docker system prune -a -f
 
       - name: Get Disk
         run: |
