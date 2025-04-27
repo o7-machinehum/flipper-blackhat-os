@@ -17,7 +17,7 @@ PYTHON_ROUTERSPLOIT_DEPENDENCIES = \
     python-requests \
     python-paramiko \
     python-pysnmp \
-    python-pycryptodomex \
-    python-telnetlib3
+    python-pycryptodome \
+    python-telnetlib3 \
 
 $(eval $(python-package))
