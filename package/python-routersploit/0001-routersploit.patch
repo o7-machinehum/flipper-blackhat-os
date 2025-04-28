@@ -1,0 +1,26 @@
+diff --git a/routersploit/core/exploit/utils.py b/routersploit/core/exploit/utils.py
+index 420db6d..e75cb14 100644
+--- a/routersploit/core/exploit/utils.py
++++ b/routersploit/core/exploit/utils.py
+@@ -92,7 +92,7 @@ def index_modules(modules_directory: str = MODULES_DIR) -> list:
+     for root, dirs, files in os.walk(modules_directory):
+         _, package, root = root.rpartition("routersploit/modules/".replace("/", os.sep))
+         root = root.replace(os.sep, ".")
+-        files = filter(lambda x: not x.startswith("__") and x.endswith(".py"), files)
++        files = filter(lambda x: not x.startswith("__") and x.endswith(".pyc"), files)
+         modules.extend(map(lambda x: ".".join((root, os.path.splitext(x)[0])), files))
+
+     return modules
+diff --git a/routersploit/interpreter.py b/routersploit/interpreter.py
+index d65f981..cf037b4 100644
+--- a/routersploit/interpreter.py
++++ b/routersploit/interpreter.py
+@@ -229,7 +229,7 @@ class RoutersploitInterpreter(BaseInterpreter):
+         self.module_commands.extend(self.global_commands)
+         self.module_commands.sort()
+
+-        self.modules = index_modules()
++        self.modules = index_modules("/usr/lib/python3.12/site-packages/routersploit")
+         self.modules_count = Counter()
+         self.modules_count.update([module.split('.')[0] for module in self.modules])
+         self.main_modules_dirs = [module for module in os.listdir(MODULES_DIR) if not module.startswith("__")]
