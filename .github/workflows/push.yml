@@ -64,7 +64,7 @@ jobs:
           sudo apt-get autoclean -y >/dev/null 2>&1
           echo "some packages purged"
 
-      - name: Get Disk
+      - name: Check Disk
         run: |
             df -h
             free
