@@ -1,0 +1,4 @@
+config BR2_PACKAGE_PYTHON_PYWIFI
+    bool "python-pywifi"
+    help
+        Pywifi provides a cross-platform Python module for manipulating wireless interfaces.

@@ -1,4 +1,4 @@
-name: Push
+name: sd-card-image-build
 
 on:
   push:
