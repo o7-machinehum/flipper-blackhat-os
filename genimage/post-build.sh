@@ -9,8 +9,12 @@ mkdir $BINARIES_DIR/scripts/ 2>/dev/null
 cp $CONFIG_DIR/../genimage/readme.txt $BINARIES_DIR/
 cp $CONFIG_DIR/../rootfs_overlay/var/www/index.html $BINARIES_DIR/
 cp $CONFIG_DIR/../package/blackhat/src/blackhat.conf $BINARIES_DIR/
-cp $CONFIG_DIR/../package/blackhat/src/hello.py $BINARIES_DIR/scripts/
-cp $CONFIG_DIR/../package/blackhat/src/port_scan.py $BINARIES_DIR/scripts/
+
+# Loose hacking scripts
+cp $CONFIG_DIR/../package/blackhat/scripts/hello.py $BINARIES_DIR/scripts/
+cp $CONFIG_DIR/../package/blackhat/scripts/port_scan.py $BINARIES_DIR/scripts/
+cp $CONFIG_DIR/../package/blackhat/scripts/data_theif.py $BINARIES_DIR/scripts/
+cp $CONFIG_DIR/../package/blackhat/scripts/data_loader.py $BINARIES_DIR/scripts/
 
 rm -f $TARGET_DIR/etc/init.d/S50dropbear
 rm -f $TARGET_DIR/etc/init.d/S50nginx
