@@ -13,7 +13,7 @@ cp $CONFIG_DIR/../package/blackhat/src/blackhat.conf $BINARIES_DIR/
 # Loose hacking scripts
 cp $CONFIG_DIR/../package/blackhat/scripts/hello.py $BINARIES_DIR/scripts/
 cp $CONFIG_DIR/../package/blackhat/scripts/port_scan.py $BINARIES_DIR/scripts/
-cp $CONFIG_DIR/../package/blackhat/scripts/data_theif.py $BINARIES_DIR/scripts/
+cp $CONFIG_DIR/../package/blackhat/scripts/data_thief.py $BINARIES_DIR/scripts/
 cp $CONFIG_DIR/../package/blackhat/scripts/data_loader.py $BINARIES_DIR/scripts/
 
 rm -f $TARGET_DIR/etc/init.d/S50dropbear
