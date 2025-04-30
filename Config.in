@@ -1,3 +1,4 @@
 source "$BR2_EXTERNAL_BLACKHAT_PATH/package/blackhat/Config.in"
 source "$BR2_EXTERNAL_BLACKHAT_PATH/package/python-routersploit/Config.in"
 source "$BR2_EXTERNAL_BLACKHAT_PATH/package/python-pycryptodome/Config.in"
+source "$BR2_EXTERNAL_BLACKHAT_PATH/package/python-nmap/Config.in"
