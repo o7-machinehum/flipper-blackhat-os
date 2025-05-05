@@ -61,6 +61,21 @@ def port_scan(ip):
 
     return bash(f"nmap -sV {base_ip}-255", SUDO)
 
+def run(nic):
+    aps = get_aps(nic)
+    bash(f"mkdir {FLOC} 2> /dev/null", False)
+
+    for ap in aps:
+        if aps[ap] == "Open":
+            connect_to_wifi(nic, ap)
+            if(is_connected(nic)):
+                ip = get_ip(nic)
+                print(f"Port Scan on: {ip}")
+                scan = port_scan(ip)
+                with open(f"{FLOC}{ap}.nmap", "w") as f:
+                    f.write(scan)
+                disconnect_from_wifi(nic)
+
 if __name__ == '__main__':
     system = bash("cat /etc/os-release")
     if "Buildroot" not in system.split("\n")[0]:
@@ -68,18 +83,5 @@ if __name__ == '__main__':
         AWK_F = "../../../rootfs_overlay/root/iw.awk"
         SUDO = True
 
-    dev = "wlan1"
-    aps = get_aps(dev)
-    bash(f"mkdir {FLOC} 2> /dev/null", False)
-
-    for ap in aps:
-        if aps[ap] == "Open":
-            connect_to_wifi(dev, ap)
-            if(is_connected(dev)):
-                ip = get_ip(dev)
-                print(f"Port Scan on: {ip}")
-                scan = port_scan(ip)
-                with open(f"{FLOC}{ap}.nmap", "w") as f:
-                    f.write(scan)
-                disconnect_from_wifi(dev)
-
+    while True:
+        run("wlan1")
