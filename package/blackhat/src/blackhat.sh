@@ -154,7 +154,7 @@ function wifi() {
                 # Check if the variable exists by testing its value
                 eval "value=\$$var"  # Dereference the variable using eval
                 if [ -n "$value" ]; then
-                    if iw $value info | grep -qE "5180 MHz|5200 MHz|5220 MHz|5240 MHz|5260 MHz"; then
+                    if iw $value info | grep -qE "5180|5200|5220|5240|5260"; then
                         echo "$var -> 2.4GHz / 5GHz"
                     else
                         echo "$var -> 2.4GHz"
