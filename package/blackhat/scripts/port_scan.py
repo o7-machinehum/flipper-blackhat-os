@@ -4,6 +4,7 @@ import time
 import pywifi
 import os
 import re
+import pdb
 from pywifi import const
 
 NMAP_CMD = "nmap -p- -sS -sV -O -oN /mnt/nmap/<ap_ssid>.log <target>"
@@ -103,6 +104,25 @@ if __name__ == '__main__':
     # You need to run wpa_supplicant
     bash("mkdir /mnt/nmap 2>/dev/null")
     bash("ip link set lo up")
+
+    # Lets choose the 5Ghz nic
+    wlanX = ""
+    nics = bash("bh wifi dev").split("\n")
+    for nic in nics:
+        if "5GHz" in nic:
+            wlanX = nic.split("->")[0].replace(" ", "")
+
+    if wlanX == "":
+        print("Can't find 5Ghz nic, quitting")
+        exit()
+
+    ps = bash(f"ps aux | grep wpa_supplicant | grep {wlanX}")
+    if len(ps) > 5:
+        pid = ps.lstrip().split(" ")[0]
+        print("Killing PID: " + pid)
+        bash(f"kill {pid}")
+
+    bash(f"wpa_supplicant -B -i {wlanX} -c /etc/wpa_supplicant.conf")
 
     while True:
         run()
