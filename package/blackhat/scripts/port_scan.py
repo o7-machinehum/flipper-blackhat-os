@@ -1,87 +1,129 @@
 #!/usr/bin/python
 
-import os
 import time
+import pywifi
+import os
 import re
+import pdb
+from pywifi import const
 
-SUDO = False
-FLOC = "/mnt/loot/"
-AWK_F = "/root/iw.awk"
+NMAP_CMD = "nmap -p- -sS -sV -O -oN /mnt/nmap/<ap_ssid>.log <target>"
 
-def bash(cmd, sudo=False):
-    if sudo:
-        cmd = f"sudo {cmd}"
+def wait_until_not(iface, status):
+    while iface.status() == status:
+        time.sleep(1)
 
+def wait_until(iface, status):
+    while iface.status() != status:
+        time.sleep(1)
+
+def bash(cmd):
     return os.popen(cmd).read()
 
-def get_aps(dev):
-    aps_d = {}
-    aps = bash(f"iw dev {dev} scan | awk -f {AWK_F}", SUDO)
-
-    for ap in aps.split("\n")[1:]:
-        try:
-            ap = ap.split("\t")
-            aps_d[ap[0]] = ap[1]
-        except:
-            continue
-
-    return aps_d
-
-def connect_to_wifi(dev, ssid):
-    print(f"Conecting to: {ap}")
-    bash(f'iw dev {dev} connect "{ssid}"', SUDO)
-
-def disconnect_from_wifi(dev):
-    bash(f"iw dev {dev} disconnect", SUDO)
-
 def get_ip(dev):
-    ip = bash("ip a", False)
-    ip = re.search("inet(.*)brd", ip.split(f"{dev}:")[1]).group(1)
-    ip = ip.strip(" ").split("/")[0]
-    return ip
-
-def is_connected(dev, timeout=10):
     retries = 0
-    while(retries < timeout):
-        status = bash(f"iw dev {dev} link")
-        if "Not connected." in status:
-            time.sleep(1)
-            retries += 1
-            continue
-        else:
-            return True
-            break
-
-    return False
-
-def port_scan(ip):
-    base_ip = ip.split(".")
-    base_ip[3] = "1"
-    base_ip = ".".join(base_ip)
-
-    return bash(f"nmap -sV {base_ip}-255", SUDO)
-
-def run(nic):
-    aps = get_aps(nic)
-    bash(f"mkdir {FLOC} 2> /dev/null", False)
-
-    for ap in aps:
-        if aps[ap] == "Open":
-            connect_to_wifi(nic, ap)
-            if(is_connected(nic)):
-                ip = get_ip(nic)
-                print(f"Port Scan on: {ip}")
-                scan = port_scan(ip)
-                with open(f"{FLOC}{ap}.nmap", "w") as f:
-                    f.write(scan)
-                disconnect_from_wifi(nic)
-
-if __name__ == '__main__':
-    system = bash("cat /etc/os-release")
-    if "Buildroot" not in system.split("\n")[0]:
-        FLOC = "~/loot/"
-        AWK_F = "../../../rootfs_overlay/root/iw.awk"
-        SUDO = True
 
     while True:
-        run("wlan1")
+        try:
+            ip = bash("ip a")
+            ip = re.search("inet(.*)brd", ip.split(f"{dev}:")[1]).group(1)
+            ip = ip.strip(" ")
+            break
+        except:
+            retries += 1
+            time.sleep(1)
+            if retries > 10:
+                return None
+            continue
+
+    return ip
+
+def run_nmap(ap_ssid):
+    print("Running Nmap")
+
+    ip = get_ip("wlan1")
+
+    if ip is None:
+        print("Not getting an IP address. Giving up.")
+        return
+
+    ip, subnet = ip.split("/")
+
+    range_scan = False
+    if subnet == "16":
+        range_scan = True
+
+    ip = ip.split(".")[0:3]
+    ip.append("0")
+
+    if range_scan:
+        ip[2] = "<range>"
+
+    ip = ".".join(ip) + "/24"
+
+    cmd = NMAP_CMD.replace("<target>", ip)
+    print(f"Scanning: {ip}")
+
+    if range_scan:
+        for i in range(0, 254):
+            cmd_run = cmd.replace("<range>", str(i))
+            cmd_run = cmd_run.replace("<ap_ssid>", ap_ssid + str(i))
+            print(f"Logging to /mnt/{ap_ssid}.log")
+            print(cmd_run)
+            bash(cmd_run)
+    else:
+        cmd = cmd.replace("<ap_ssid>", ap_ssid)
+        print(f"Logging to /mnt/{ap_ssid}.log")
+        print(cmd)
+        bash(cmd)
+
+def run():
+    wifi = pywifi.PyWiFi()
+    iface = wifi.interfaces()[0] # Start with wlan0
+
+    iface.disconnect()
+    wait_until_not(iface, const.IFACE_CONNECTED)
+    iface.scan()
+    wait_until_not(iface, const.IFACE_SCANNING)
+
+    aps = iface.scan_results()
+    for ap in aps:
+        # Check for security
+        # Or AKM_TYPE_NONE
+        if len(ap.akm) == 0:
+            print(f"Connecting to {ap.ssid}")
+            ap.akm.append(const.AKM_TYPE_NONE)
+            iface.remove_all_network_profiles()
+            tmp_profile = iface.add_network_profile(ap)
+            iface.connect(tmp_profile)
+            wait_until(iface, const.IFACE_CONNECTED)
+            run_nmap(ap.ssid)
+            iface.disconnect()
+
+if __name__ == '__main__':
+    # You need to run wpa_supplicant
+    bash("mkdir /mnt/nmap 2>/dev/null")
+    bash("ip link set lo up")
+
+    # Lets choose the 5Ghz nic
+    wlanX = ""
+    nics = bash("bh wifi dev").split("\n")
+    for nic in nics:
+        if "5GHz" in nic:
+            wlanX = nic.split("->")[0].replace(" ", "")
+
+    if wlanX == "":
+        print("Can't find 5Ghz nic, quitting")
+        exit()
+
+    ps = bash(f"ps aux | grep wpa_supplicant | grep {wlanX}")
+    if len(ps) > 5:
+        pid = ps.lstrip().split(" ")[0]
+        print("Killing PID: " + pid)
+        bash(f"kill {pid}")
+
+    bash(f"wpa_supplicant -B -i {wlanX} -c /etc/wpa_supplicant.conf")
+
+    while True:
+        run()
+        time.sleep(1)
