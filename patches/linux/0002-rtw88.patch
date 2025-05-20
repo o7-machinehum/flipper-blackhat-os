@@ -1,273 +1,54 @@
-diff --git a/drivers/net/wireless/realtek/rtw88/hci.h b/drivers/net/wireless/realtek/rtw88/hci.h
-index 96aeda26014e..cefabcd477d3 100644
---- a/drivers/net/wireless/realtek/rtw88/hci.h
-+++ b/drivers/net/wireless/realtek/rtw88/hci.h
-@@ -18,6 +18,8 @@ struct rtw_hci_ops {
- 	void (*deep_ps)(struct rtw_dev *rtwdev, bool enter);
- 	void (*link_ps)(struct rtw_dev *rtwdev, bool enter);
- 	void (*interface_cfg)(struct rtw_dev *rtwdev);
-+	void (*stop_rx)(struct rtw_dev *rtwdev);
-+	void (*start_rx)(struct rtw_dev *rtwdev);
- 	void (*dynamic_rx_agg)(struct rtw_dev *rtwdev, bool enable);
- 
- 	int (*write_data_rsvd_page)(struct rtw_dev *rtwdev, u8 *buf, u32 size);
-@@ -58,6 +60,18 @@ static inline void rtw_hci_stop(struct rtw_dev *rtwdev)
- 	rtwdev->hci.ops->stop(rtwdev);
- }
- 
-+static inline void rtw_hci_start_rx(struct rtw_dev *rtwdev)
-+{
-+	if (rtwdev->hci.ops->start_rx)
-+		rtwdev->hci.ops->start_rx(rtwdev);
-+}
-+
-+static inline void rtw_hci_stop_rx(struct rtw_dev *rtwdev)
-+{
-+	if (rtwdev->hci.ops->stop_rx)
-+		rtwdev->hci.ops->stop_rx(rtwdev);
-+}
-+
- static inline void rtw_hci_deep_ps(struct rtw_dev *rtwdev, bool enter)
- {
- 	rtwdev->hci.ops->deep_ps(rtwdev, enter);
-diff --git a/drivers/net/wireless/realtek/rtw88/mac80211.c b/drivers/net/wireless/realtek/rtw88/mac80211.c
-index 026fbf4ad9cc..addf2d45cd25 100644
---- a/drivers/net/wireless/realtek/rtw88/mac80211.c
-+++ b/drivers/net/wireless/realtek/rtw88/mac80211.c
-@@ -98,7 +98,7 @@ static int rtw_ops_config(struct ieee80211_hw *hw, u32 changed)
- 	if ((changed & IEEE80211_CONF_CHANGE_IDLE) &&
- 	    (hw->conf.flags & IEEE80211_CONF_IDLE) &&
- 	    !test_bit(RTW_FLAG_SCANNING, rtwdev->flags))
--		rtw_enter_ips(rtwdev);
-+		rtw_enter_ips(rtwdev, false);
- 
- out:
- 	mutex_unlock(&rtwdev->mutex);
 diff --git a/drivers/net/wireless/realtek/rtw88/main.c b/drivers/net/wireless/realtek/rtw88/main.c
-index 959f56a3cc1a..2837df6dbf67 100644
+index 959f56a3cc1a..34241ae044c1 100644
 --- a/drivers/net/wireless/realtek/rtw88/main.c
 +++ b/drivers/net/wireless/realtek/rtw88/main.c
-@@ -327,7 +327,7 @@ static void rtw_ips_work(struct work_struct *work)
+@@ -1504,11 +1504,11 @@ void rtw_core_scan_complete(struct rtw_dev *rtwdev, struct ieee80211_vif *vif,
  
- 	mutex_lock(&rtwdev->mutex);
- 	if (rtwdev->hw->conf.flags & IEEE80211_CONF_IDLE)
--		rtw_enter_ips(rtwdev);
-+		rtw_enter_ips(rtwdev, false);
- 	mutex_unlock(&rtwdev->mutex);
- }
- 
-@@ -667,7 +667,7 @@ static void __fw_recovery_work(struct rtw_dev *rtwdev)
- 	rtw_iterate_stas_atomic(rtwdev, rtw_reset_sta_iter, rtwdev);
- 	rtw_iterate_vifs_atomic(rtwdev, rtw_reset_vif_iter, rtwdev);
- 	bitmap_zero(rtwdev->hw_port, RTW_PORT_NUM);
--	rtw_enter_ips(rtwdev);
-+	rtw_enter_ips(rtwdev, false);
- }
- 
- static void rtw_fw_recovery_work(struct work_struct *work)
-@@ -1377,6 +1377,9 @@ int rtw_power_on(struct rtw_dev *rtwdev)
- 	bool wifi_only;
- 	int ret;
- 
-+	if (rtwdev->always_power_on && test_bit(RTW_FLAG_POWERON, rtwdev->flags))
-+		goto success;
-+
- 	ret = rtw_hci_setup(rtwdev);
- 	if (ret) {
- 		rtw_err(rtwdev, "failed to setup hci\n");
-@@ -1425,6 +1428,9 @@ int rtw_power_on(struct rtw_dev *rtwdev)
- 	rtw_coex_power_on_setting(rtwdev);
- 	rtw_coex_init_hw_config(rtwdev, wifi_only);
- 
-+success:
-+	rtw_hci_start_rx(rtwdev);
-+
- 	return 0;
- 
- err_off:
-@@ -1505,6 +1511,8 @@ void rtw_core_scan_complete(struct rtw_dev *rtwdev, struct ieee80211_vif *vif,
  int rtw_core_start(struct rtw_dev *rtwdev)
  {
- 	int ret;
-+	if (rtwdev->always_power_on)
-+		return 0;
+-	int ret;
+-
+-	ret = rtwdev->chip->ops->power_on(rtwdev);
+-	if (ret)
+-		return ret;
++	if (!test_bit(RTW_FLAG_POWERON, rtwdev->flags)) {
++		int ret = rtwdev->chip->ops->power_on(rtwdev);
++		if (ret)
++			return ret;
++	}
  
- 	ret = rtwdev->chip->ops->power_on(rtwdev);
- 	if (ret)
-diff --git a/drivers/net/wireless/realtek/rtw88/main.h b/drivers/net/wireless/realtek/rtw88/main.h
-index 02343e059fd9..156745061afc 100644
---- a/drivers/net/wireless/realtek/rtw88/main.h
-+++ b/drivers/net/wireless/realtek/rtw88/main.h
-@@ -764,6 +764,7 @@ struct rtw_sta_info {
- 	struct ieee80211_sta *sta;
- 	struct ieee80211_vif *vif;
+ 	rtw_sec_enable_sec_engine(rtwdev);
  
-+
- 	struct ewma_rssi avg_rssi;
- 	u8 rssi_level;
+@@ -1557,7 +1557,9 @@ void rtw_core_stop(struct rtw_dev *rtwdev)
  
-@@ -2067,6 +2068,8 @@ struct rtw_dev {
- 	struct rtw_dm_info dm_info;
- 	struct rtw_coex coex;
+ 	mutex_lock(&rtwdev->mutex);
  
-+	bool always_power_on;
-+
- 	/* ensures exclusive access from mac80211 callbacks */
- 	struct mutex mutex;
+-	rtwdev->chip->ops->power_off(rtwdev);
++	/* FIXME: 8821C doesn't wake up from this state from time to time */
++	if (rtwdev->chip->id != RTW_CHIP_TYPE_8821C)
++	    rtwdev->chip->ops->power_off(rtwdev);
+ }
  
+ static void rtw_init_ht_cap(struct rtw_dev *rtwdev,
 diff --git a/drivers/net/wireless/realtek/rtw88/ps.c b/drivers/net/wireless/realtek/rtw88/ps.c
-index add5a20b8432..a4092d424eda 100644
+index add5a20b8432..f9fbc9b3174b 100644
 --- a/drivers/net/wireless/realtek/rtw88/ps.c
 +++ b/drivers/net/wireless/realtek/rtw88/ps.c
-@@ -24,8 +24,11 @@ static int rtw_ips_pwr_up(struct rtw_dev *rtwdev)
- 	return ret;
- }
+@@ -26,7 +26,7 @@ static int rtw_ips_pwr_up(struct rtw_dev *rtwdev)
  
--int rtw_enter_ips(struct rtw_dev *rtwdev)
-+int rtw_enter_ips(struct rtw_dev *rtwdev, bool force)
+ int rtw_enter_ips(struct rtw_dev *rtwdev)
  {
-+	if (!force && rtwdev->always_power_on)
-+		return 0;
-+
- 	if (!test_bit(RTW_FLAG_POWERON, rtwdev->flags))
+-	if (!test_bit(RTW_FLAG_POWERON, rtwdev->flags))
++	if (!test_bit(RTW_FLAG_RUNNING, rtwdev->flags))
  		return 0;
  
-diff --git a/drivers/net/wireless/realtek/rtw88/ps.h b/drivers/net/wireless/realtek/rtw88/ps.h
-index 5ae83d2526cf..92057d01cbec 100644
---- a/drivers/net/wireless/realtek/rtw88/ps.h
-+++ b/drivers/net/wireless/realtek/rtw88/ps.h
-@@ -15,7 +15,7 @@
- #define LEAVE_LPS_TRY_CNT	5
- #define LEAVE_LPS_TIMEOUT	msecs_to_jiffies(100)
- 
--int rtw_enter_ips(struct rtw_dev *rtwdev);
-+int rtw_enter_ips(struct rtw_dev *rtwdev, bool force);
- int rtw_leave_ips(struct rtw_dev *rtwdev);
- 
- void rtw_power_mode_change(struct rtw_dev *rtwdev, bool enter);
-diff --git a/drivers/net/wireless/realtek/rtw88/usb.c b/drivers/net/wireless/realtek/rtw88/usb.c
-index c8092fa0d9f1..db84eb0b3bc5 100644
---- a/drivers/net/wireless/realtek/rtw88/usb.c
-+++ b/drivers/net/wireless/realtek/rtw88/usb.c
-@@ -570,6 +570,11 @@ static void rtw_usb_rx_handler(struct work_struct *work)
- 			continue;
- 		}
- 
-+		if (!test_bit(RTW_FLAG_RUNNING, rtwdev->flags)) {
-+			dev_kfree_skb_any(skb);
-+			continue;
-+		}
-+
- 		rx_desc = rx_skb->data;
- 
- 		do {
-@@ -733,6 +738,35 @@ static void rtw_usb_cancel_rx_bufs(struct rtw_usb *rtwusb)
- 	}
- }
- 
-+
-+static void rtw_usb_stop_rx(struct rtw_dev *rtwdev)
-+{
-+	struct rtw_usb *rtwusb = rtw_get_usb_priv(rtwdev);
-+
-+	if (!rtwusb->rx_enabled)
-+		return;
-+
-+	rtw_usb_cancel_rx_bufs(rtwusb);
-+	rtwusb->rx_enabled = false;
-+}
-+
-+static void rtw_usb_start_rx(struct rtw_dev *rtwdev)
-+{
-+	struct rtw_usb *rtwusb = rtw_get_usb_priv(rtwdev);
-+	int i;
-+
-+	if (rtwusb->rx_enabled)
-+		return;
-+
-+	for (i = 0; i < RTW_USB_RXCB_NUM; i++) {
-+		struct rx_usb_ctrl_block *rxcb = &rtwusb->rx_cb[i];
-+
-+		rtw_usb_rx_resubmit(rtwusb, rxcb, GFP_ATOMIC);
-+	}
-+
-+	rtwusb->rx_enabled = true;
-+}
-+
- static void rtw_usb_free_rx_bufs(struct rtw_usb *rtwusb)
+ 	rtw_coex_ips_notify(rtwdev, COEX_IPS_ENTER);
+@@ -50,7 +50,7 @@ int rtw_leave_ips(struct rtw_dev *rtwdev)
  {
- 	struct rx_usb_ctrl_block *rxcb;
-@@ -891,6 +925,8 @@ static const struct rtw_hci_ops rtw_usb_ops = {
- 	.link_ps = rtw_usb_link_ps,
- 	.interface_cfg = rtw_usb_interface_cfg,
- 	.dynamic_rx_agg = rtw_usb_dynamic_rx_agg,
-+	.stop_rx = rtw_usb_stop_rx,
-+	.start_rx = rtw_usb_start_rx,
+ 	int ret;
  
- 	.write8  = rtw_usb_write8,
- 	.write16 = rtw_usb_write16,
-@@ -930,18 +966,6 @@ static int rtw_usb_init_rx(struct rtw_dev *rtwdev)
- 	return 0;
- }
+-	if (test_bit(RTW_FLAG_POWERON, rtwdev->flags))
++	if (test_bit(RTW_FLAG_RUNNING, rtwdev->flags))
+ 		return 0;
  
--static void rtw_usb_setup_rx(struct rtw_dev *rtwdev)
--{
--	struct rtw_usb *rtwusb = rtw_get_usb_priv(rtwdev);
--	int i;
--
--	for (i = 0; i < RTW_USB_RXCB_NUM; i++) {
--		struct rx_usb_ctrl_block *rxcb = &rtwusb->rx_cb[i];
--
--		rtw_usb_rx_resubmit(rtwusb, rxcb, GFP_KERNEL);
--	}
--}
--
- static void rtw_usb_deinit_rx(struct rtw_dev *rtwdev)
- {
- 	struct rtw_usb *rtwusb = rtw_get_usb_priv(rtwdev);
-@@ -1213,6 +1237,11 @@ int rtw_usb_probe(struct usb_interface *intf, const struct usb_device_id *id)
- 	rtwdev->hci.ops = &rtw_usb_ops;
- 	rtwdev->hci.type = RTW_HCI_TYPE_USB;
- 
-+	if (rtwdev->chip->id == RTW_CHIP_TYPE_8821C)
-+		rtwdev->always_power_on = true;
-+
-+
-+
- 	rtwusb = rtw_get_usb_priv(rtwdev);
- 	rtwusb->rtwdev = rtwdev;
- 
-@@ -1265,7 +1294,7 @@ int rtw_usb_probe(struct usb_interface *intf, const struct usb_device_id *id)
- 		goto err_destroy_rxwq;
- 	}
- 
--	rtw_usb_setup_rx(rtwdev);
-+	rtw_usb_start_rx(rtwdev);
- 
- 	return 0;
- 
-diff --git a/drivers/net/wireless/realtek/rtw88/usb.h b/drivers/net/wireless/realtek/rtw88/usb.h
-index 9b695b688b24..553d2a6b1905 100644
---- a/drivers/net/wireless/realtek/rtw88/usb.h
-+++ b/drivers/net/wireless/realtek/rtw88/usb.h
-@@ -82,6 +82,7 @@ struct rtw_usb {
- 
- 	struct rx_usb_ctrl_block rx_cb[RTW_USB_RXCB_NUM];
- 	struct sk_buff_head rx_queue;
-+	bool rx_enabled;
- 	struct sk_buff_head rx_free_queue;
- 	struct work_struct rx_work;
- 	struct work_struct rx_urb_work;
-diff --git a/drivers/net/wireless/realtek/rtw88/wow.c b/drivers/net/wireless/realtek/rtw88/wow.c
-index 16ddee577efe..a90c8b388944 100644
---- a/drivers/net/wireless/realtek/rtw88/wow.c
-+++ b/drivers/net/wireless/realtek/rtw88/wow.c
-@@ -620,7 +620,7 @@ static int rtw_wow_restore_ps(struct rtw_dev *rtwdev)
- 	int ret = 0;
- 
- 	if (rtw_wow_no_link(rtwdev) && rtwdev->wow.ips_enabled)
--		ret = rtw_enter_ips(rtwdev);
-+		ret = rtw_enter_ips(rtwdev, false);
- 
- 	return ret;
- }
+ 	rtw_hci_link_ps(rtwdev, false);
