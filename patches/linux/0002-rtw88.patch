@@ -1,0 +1,54 @@
+diff --git a/drivers/net/wireless/realtek/rtw88/main.c b/drivers/net/wireless/realtek/rtw88/main.c
+index 959f56a3cc1a..34241ae044c1 100644
+--- a/drivers/net/wireless/realtek/rtw88/main.c
++++ b/drivers/net/wireless/realtek/rtw88/main.c
+@@ -1504,11 +1504,11 @@ void rtw_core_scan_complete(struct rtw_dev *rtwdev, struct ieee80211_vif *vif,
+ 
+ int rtw_core_start(struct rtw_dev *rtwdev)
+ {
+-	int ret;
+-
+-	ret = rtwdev->chip->ops->power_on(rtwdev);
+-	if (ret)
+-		return ret;
++	if (!test_bit(RTW_FLAG_POWERON, rtwdev->flags)) {
++		int ret = rtwdev->chip->ops->power_on(rtwdev);
++		if (ret)
++			return ret;
++	}
+ 
+ 	rtw_sec_enable_sec_engine(rtwdev);
+ 
+@@ -1557,7 +1557,9 @@ void rtw_core_stop(struct rtw_dev *rtwdev)
+ 
+ 	mutex_lock(&rtwdev->mutex);
+ 
+-	rtwdev->chip->ops->power_off(rtwdev);
++	/* FIXME: 8821C doesn't wake up from this state from time to time */
++	if (rtwdev->chip->id != RTW_CHIP_TYPE_8821C)
++	    rtwdev->chip->ops->power_off(rtwdev);
+ }
+ 
+ static void rtw_init_ht_cap(struct rtw_dev *rtwdev,
+diff --git a/drivers/net/wireless/realtek/rtw88/ps.c b/drivers/net/wireless/realtek/rtw88/ps.c
+index add5a20b8432..f9fbc9b3174b 100644
+--- a/drivers/net/wireless/realtek/rtw88/ps.c
++++ b/drivers/net/wireless/realtek/rtw88/ps.c
+@@ -26,7 +26,7 @@ static int rtw_ips_pwr_up(struct rtw_dev *rtwdev)
+ 
+ int rtw_enter_ips(struct rtw_dev *rtwdev)
+ {
+-	if (!test_bit(RTW_FLAG_POWERON, rtwdev->flags))
++	if (!test_bit(RTW_FLAG_RUNNING, rtwdev->flags))
+ 		return 0;
+ 
+ 	rtw_coex_ips_notify(rtwdev, COEX_IPS_ENTER);
+@@ -50,7 +50,7 @@ int rtw_leave_ips(struct rtw_dev *rtwdev)
+ {
+ 	int ret;
+ 
+-	if (test_bit(RTW_FLAG_POWERON, rtwdev->flags))
++	if (test_bit(RTW_FLAG_RUNNING, rtwdev->flags))
+ 		return 0;
+ 
+ 	rtw_hci_link_ps(rtwdev, false);

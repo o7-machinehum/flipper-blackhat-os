@@ -1,0 +1,13 @@
+diff --git a/capture_sdr_rtladsb_v2/capture_sdr_rtladsb_v2.c b/capture_sdr_rtladsb_v2/capture_sdr_rtladsb_v2.c
+index 195aaac93..f3213f9a6 100644
+--- a/capture_sdr_rtladsb_v2/capture_sdr_rtladsb_v2.c
++++ b/capture_sdr_rtladsb_v2/capture_sdr_rtladsb_v2.c
+@@ -65,7 +65,7 @@
+ #include <sys/stat.h>
+ 
+ #include <stdint.h>
+-
++#include <stdio.h>
+ #include <rtl-sdr.h>
+ 
+ #include "../capture_framework.h"
