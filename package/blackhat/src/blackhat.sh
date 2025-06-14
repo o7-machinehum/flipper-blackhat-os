@@ -112,7 +112,7 @@ function evil_portal() {
 }
 
 function set_param() {
-    sed -i "/^$1=/c$1=\'$2\'" ${CONFIG_F}
+    sed -i "/^export $1=/cexport $1=\'$2\'" ${CONFIG_F}
 }
 
 function check() {
