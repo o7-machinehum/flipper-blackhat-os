@@ -2,22 +2,24 @@
 # /newbot
 # https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates
 
-import re
+import os
 import requests
 
 class Telegram:
     def __init__(self, path):
-        with open(path, "r") as f:
-            cfg = f.read()
+        with open(path) as f:
+            for line in f:
+                if line.startswith("export"):
+                    key_value = line.strip().split("export ")[1]
+                    key, value = key_value.split("=", 1)
+                    os.environ[key] = value.strip("'")
 
-        self.bot_token = ""
-        self.chat_id = ""
-
-        for line in cfg.split("\n"):
-            if "TELEGRAM_BOT_TOKEN" in line:
-                self.bot_token = re.search(r"'(.*?)'", line).group(1)
-            if "TELEGRAM_CHAT_ID" in line:
-                self.chat_id = re.search(r"'(.*?)'", line).group(1)
+        try:
+            self.bot_token = os.environ["TELEGRAM_BOT_TOKEN"]
+            self.chat_id = os.environ["TELEGRAM_CHAT_ID"]
+        except KeyError:
+            self.bot_token = ""
+            self.chat_id = ""
 
     def send(self, msg):
         if self.bot_token == "" or self.chat_id == "":
