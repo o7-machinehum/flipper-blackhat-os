@@ -21,7 +21,7 @@ rm $LOG_F 2>/dev/null
 
 function print_help() {
     echo "Commands:"
-    echo "useage: bh wifi connect"
+    echo "usage: bh wifi connect wlan0"
     echo "        bh set PASS 'my_wifi_password'"
     echo "  set"
     echo "    SSID              Set SSID of WiFi network to connect to"
@@ -29,14 +29,14 @@ function print_help() {
     echo "    AP_SSID           Set SSID of WiFi network you're creating"
     echo "  wifi"
     echo "    list <iface>      List WiFi APs"
-    echo "    con               Connect to WiFi AP"
-    echo "    dev               List devices"
-    echo "    ap                Enable Access Point"
-    echo "    ip                Get IP Address"
-    echo "  ssh                 Enable SSH"
-    echo "  evil_twin           Enable the evil twin AP"
-    echo "  evil_portal         Enable the evil portal AP"
-    echo "  kismet              Enable Kismet"
+    echo "    con <iface|stop>  Connect/disconnect to WiFi network"
+    echo "    dev               List wlan devices"
+    echo "    ap <iface|stop>   Enable/disable Access Point"
+    echo "    ip                Get IP Addresses"
+    echo "  ssh [stop]          Enable/disable SSH daemon"
+    echo "  evil_twin           Enable internet passthrough from AP to WiFi"
+    echo "  evil_portal [stop]  Enable/disable evil portal the AP"
+    echo "  kismet <iface|stop> Enable/disable Kismet"
     echo "  test_inet           Ping google.com"
     echo "  get                 Get currently set parameters"
     echo "  script"
@@ -45,7 +45,22 @@ function print_help() {
 }
 
 function connect_wifi() {
-    INET_NIC=$(bh wifi dev | grep -v "5GHz" | awk '{print $1}' | grep wlan | head -n1)
+    check $1
+
+    if [ "$1" = "stop" ]; then
+        killall wpa_supplicant
+        INET_NIC=$(cat /run/inet_nic 2>/dev/null) || exit
+        ip link set $INET_NIC down
+        rm /run/inet_nic
+        echo "WiFi Disconnected"
+        exit
+    fi
+
+    INET_NIC=$(bh wifi dev | grep $1 | awk '{print $1}' | grep wlan | head -n1)
+    if [ "$INET_NIC" != "$1" ]; then
+        echo "Invalid wlan device!"
+        exit
+    fi
     echo $INET_NIC > /run/inet_nic
     echo INET_NIC: $INET_NIC
 
@@ -54,7 +69,23 @@ function connect_wifi() {
 }
 
 function start_ap() {
-    AP_NIC=$(bh wifi dev | grep "5GHz" | awk '{print $1}' | head -n1)
+    check $1
+
+    if [ "$1" = "stop" ]; then
+        killall hostapd
+        AP_NIC=$(cat /run/ap_nic 2>/dev/null) || exit
+        ip link set $AP_NIC down
+        ip addr flush $AP_NIC
+        rm /run/ap_nic
+        echo "AP Stopped"
+        exit
+    fi
+
+    AP_NIC=$(bh wifi dev | grep $1 | awk '{print $1}' | grep wlan | head -n1)
+    if [ "$AP_NIC" != "$1" ]; then
+        echo "Invalid wlan device!"
+        exit
+    fi
     echo $AP_NIC > /run/ap_nic
     echo AP_NIC: $AP_NIC
 
@@ -71,9 +102,17 @@ function start_ap() {
     dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F &
 }
 
+function get_5ghz_nic() {
+    bh wifi dev | grep "5GHz" | awk '{print $1}' | grep wlan | head -n1
+}
+
+function get_2_4ghz_nic() {
+    bh wifi dev | grep -v "5GHz" | awk '{print $1}' | grep wlan | head -n1
+}
+
 function evil_twin() {
-    INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { connect_wifi; INET_NIC=$(cat /run/inet_nic); }
-    AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { start_ap; AP_NIC=$(cat /run/ap_nic); }
+    INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { connect_wifi $(get_2_4ghz_nic); INET_NIC=$(cat /run/inet_nic); }
+    AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { start_ap $(get_5ghz_nic); AP_NIC=$(cat /run/ap_nic); }
 
     # Enable IP forwarding
     echo 1 > /proc/sys/net/ipv4/ip_forward
@@ -91,8 +130,15 @@ function evil_twin() {
 }
 
 function evil_portal() {
-    INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { connect_wifi; INET_NIC=$(cat /run/inet_nic); }
-    AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { start_ap; AP_NIC=$(cat /run/ap_nic); }
+    if [ "$1" = "stop" ]; then
+        killall nginx
+        killall evil_portal
+        echo "Evil Portal Stopped"
+        exit
+    fi
+
+    INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { connect_wifi $(get_2_4ghz_nic); INET_NIC=$(cat /run/inet_nic); }
+    AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { start_ap $(get_5ghz_nic); AP_NIC=$(cat /run/ap_nic); }
 
     echo 1 > /proc/sys/net/ipv4/ip_forward
     nft -f /etc/ep-rules.nft
@@ -123,16 +169,17 @@ function check() {
 }
 
 function wifi() {
-    case "$1" in
+    subcommand=$1; shift
+    case "$subcommand" in
         list)
-            check $2
-            iw $2 scan | grep "SSID:"
+            check $1
+            iw $1 scan | grep "SSID:"
             ;;
         connect | con)
-            connect_wifi
+            connect_wifi "$@"
             ;;
         ap)
-            start_ap
+            start_ap "$@"
             ;;
         dev)
             s=$(iw dev | grep -e phy -e wlan)
@@ -175,12 +222,13 @@ function wifi() {
 
 
 function script() {
-    case "$1" in
+    subcommand=$1; shift
+    case "$subcommand" in
         scan)
             ls -1 --color=never /mnt/scripts/
             ;;
         run)
-            /mnt/scripts/$2
+            /mnt/scripts/$1
             ;;
         *)
             print_help
@@ -188,6 +236,16 @@ function script() {
 }
 
 function bh_kismet() {
+    check $1
+
+    if [ "$1" = "stop" ]; then
+        killall kismet
+        KISMET_NIC=$(cat /run/kismet_nic 2>/dev/null) || exit
+        rm /run/kismet_nic
+        echo "Kismet Stopped"
+        exit
+    fi
+
     echo $1 > /run/kismet_nic
     KISMET_NIC=$(cat /run/kismet_nic 2>/dev/null)
     kismet -s \
@@ -197,6 +255,12 @@ function bh_kismet() {
 }
 
 function ssh() {
+    if [ "$1" = "stop" ]; then
+        killall dropbear
+        echo "SSH Server Stopped"
+        exit
+    fi
+
     mkdir /var/run/dropbear 2>/dev/null
     /usr/sbin/dropbear -R
     echo "SSH Server Started"
@@ -216,16 +280,16 @@ case "$subcommand" in
         wifi "$@"
         ;;
     ssh)
-        ssh
+        ssh "$@"
         ;;
     evil_twin)
-        evil_twin
+        evil_twin "$@"
         ;;
     evil_portal)
-        evil_portal
+        evil_portal "$@"
         ;;
     kismet)
-       bh_kismet "$@"
+        bh_kismet "$@"
         ;;
     test_inet)
         ping google.com -w 3
