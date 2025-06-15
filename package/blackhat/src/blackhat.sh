@@ -52,6 +52,7 @@ function connect_wifi() {
         INET_NIC=$(cat /run/inet_nic 2>/dev/null) || exit
         ip link set $INET_NIC down
         rm /run/inet_nic
+        echo "WiFi Disconnected"
         exit
     fi
 
@@ -76,6 +77,7 @@ function start_ap() {
         ip link set $AP_NIC down
         ip addr flush $AP_NIC
         rm /run/ap_nic
+        echo "AP Stopped"
         exit
     fi
 
@@ -131,6 +133,7 @@ function evil_portal() {
     if [ "$1" = "stop" ]; then
         killall nginx
         killall evil_portal
+        echo "Evil Portal Stopped"
         exit
     fi
 
@@ -239,6 +242,7 @@ function bh_kismet() {
         killall kismet
         KISMET_NIC=$(cat /run/kismet_nic 2>/dev/null) || exit
         rm /run/kismet_nic
+        echo "Kismet Stopped"
         exit
     fi
 
@@ -253,6 +257,7 @@ function bh_kismet() {
 function ssh() {
     if [ "$1" = "stop" ]; then
         killall dropbear
+        echo "SSH Server Stopped"
         exit
     fi
 
