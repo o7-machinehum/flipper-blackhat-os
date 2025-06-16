@@ -1,0 +1,179 @@
+diff --git a/drivers/gpu/drm/panel/panel-sitronix-st7701.c b/drivers/gpu/drm/panel/panel-sitronix-st7701.c
+index 1f72ef7ca74c..8c0c3f766f89 100644
+--- a/drivers/gpu/drm/panel/panel-sitronix-st7701.c
++++ b/drivers/gpu/drm/panel/panel-sitronix-st7701.c
+@@ -221,6 +221,7 @@ static void st7701_init_sequence(struct st7701 *st7701)
+ 	msleep(st7701->sleep_delay);
+
+ 	/* Command2, BK0 */
++	// tft34.write1
+ 	st7701_switch_cmd_bkx(st7701, true, 0);
+
+ 	st7701->write_command(st7701, ST7701_CMD2_BK0_PVGAMCTRL, desc->pv_gamma,
+@@ -280,13 +281,16 @@ static void st7701_init_sequence(struct st7701 *st7701)
+ 						      (u16)17000) - 11500,
+ 						500)));
+
++	// tft42.testcmd
+ 	ST7701_WRITE(st7701, ST7701_CMD2_BK1_TESTCMD, ST7701_CMD2_BK1_TESTCMD_VAL);
+
+ 	/* Vgl is non-linear */
++	// tft42.st7701_cmd2_bk1_vgls_ones
+ 	ST7701_WRITE(st7701, ST7701_CMD2_BK1_VGLS,
+ 		   ST7701_CMD2_BK1_VGLS_ONES |
+ 		   FIELD_PREP(ST7701_CMD2_BK1_VGLS_MASK, st7701_vgls_map(st7701)));
+
++	// tft42.gamma
+ 	ST7701_WRITE(st7701, ST7701_CMD2_BK1_PWCTLR1,
+ 		   FIELD_PREP(ST7701_CMD2_BK1_PWRCTRL1_AP_MASK,
+ 			      desc->gamma_op_bias) |
+@@ -296,6 +300,7 @@ static void st7701_init_sequence(struct st7701 *st7701)
+ 			      desc->output_op_bias));
+
+ 	/* Avdd = 6.2V + (AVDD[1:0] * 0.2V) , Avcl = -4.4V - (AVCL[1:0] * 0.2V) */
++	// tft42.avdd_mv
+ 	ST7701_WRITE(st7701, ST7701_CMD2_BK1_PWCTLR2,
+ 		   FIELD_PREP(ST7701_CMD2_BK1_PWRCTRL2_AVDD_MASK,
+ 			      DIV_ROUND_CLOSEST(desc->avdd_mv - 6200, 200)) |
+@@ -303,22 +308,48 @@ static void st7701_init_sequence(struct st7701 *st7701)
+ 			      DIV_ROUND_CLOSEST(-4400 - desc->avcl_mv, 200)));
+
+ 	/* T2D = 0.2us * T2D[3:0] */
++	// tft42.t2d_ns
+ 	ST7701_WRITE(st7701, ST7701_CMD2_BK1_SPD1,
+ 		   ST7701_CMD2_BK1_SPD1_ONES_MASK |
+ 		   FIELD_PREP(ST7701_CMD2_BK1_SPD1_T2D_MASK,
+ 			      DIV_ROUND_CLOSEST(desc->t2d_ns, 200)));
+
+ 	/* T3D = 4us + (0.8us * T3D[3:0]) */
++	// tft42.t3d_ns
+ 	ST7701_WRITE(st7701, ST7701_CMD2_BK1_SPD2,
+ 		   ST7701_CMD2_BK1_SPD2_ONES_MASK |
+ 		   FIELD_PREP(ST7701_CMD2_BK1_SPD2_T3D_MASK,
+ 			      DIV_ROUND_CLOSEST(desc->t3d_ns - 4000, 800)));
+
++	// tft42.eot_en
+ 	ST7701_WRITE(st7701, ST7701_CMD2_BK1_MIPISET1,
+ 		   ST7701_CMD2_BK1_MIPISET1_ONES |
+ 		   (desc->eot_en ? ST7701_CMD2_BK1_MIPISET1_EOT_EN : 0));
+ }
+
++static void tft34_485_gip_sequence(struct st7701 *st7701)
++{
++	ST7701_WRITE(st7701, 0xE0, 0x00, 0x00, 0x02); // tft34.gip1
++	ST7701_WRITE(st7701, 0xE1, 0x06, 0x30, 0x08, 0x30, 0x05, 0x30, 0x07,
++		   0x30, 0x00, 0x33, 0x33); // tft34.gip2
++	ST7701_WRITE(st7701, 0xE2, 0x11, 0x11, 0x33, 0x33, 0xf4, 0x00, 0x00,
++		   0x00, 0xf4, 0x00, 0x00, 0x00); // tft34.gip3
++	ST7701_WRITE(st7701, 0xE3, 0x00, 0x00, 0x11, 0x11); // tft34.gip4
++	ST7701_WRITE(st7701, 0xE4, 0x44, 0x44); // tft34.gip5
++	ST7701_WRITE(st7701, 0xE5, 0x0D, 0xF5, 0x30, 0xF0, 0x0F, 0xF7, 0x30,
++		   0xF0, 0x09, 0xF1, 0x30, 0xF0, 0x0B, 0xF3, 0x30, 0xF0); // tft34.gip6
++	ST7701_WRITE(st7701, 0xE6, 0x00, 0x00, 0x11, 0x11); // tft34.gip7
++	ST7701_WRITE(st7701, 0xE7, 0x44, 0x44); // tft34.gip8
++	ST7701_WRITE(st7701, 0xE8, 0x0C, 0xF4, 0x30, 0xF0, 0x0E, 0xF6, 0x30,
++		   0xF0, 0x08, 0xF0, 0x30, 0xF0, 0x0A, 0xF2, 0x30, 0xF0); // tft34.gip9
++	ST7701_WRITE(st7701, 0xE9, 0x36, 0x01); // tft34.gip10
++	ST7701_WRITE(st7701, 0xEB, 0x00, 0x01, 0xE4, 0xE4, 0x44, 0x88, 0x40); // tft34.gip11
++	ST7701_WRITE(st7701, 0xED, 0xFF, 0x45, 0x67, 0xFA, 0x01, 0x2B, 0xCF,
++		   0xFF, 0xFF, 0xFC, 0xB2, 0x10, 0xAF, 0x76, 0x54, 0xFF); // tft34.gip12
++	ST7701_WRITE(st7701, 0xEF, 0x10, 0x0D, 0x04, 0x08, 0x3F, 0x1F); // tft34.gip13
++	ST7701_WRITE(st7701, 0xFF, 0x10, 0x0D, 0x04, 0x08, 0x3F, 0x1F); // tft34.gip14
++}
++
+ static void ts8550b_gip_sequence(struct st7701 *st7701)
+ {
+ 	/**
+@@ -637,6 +668,84 @@ static const struct drm_panel_funcs st7701_funcs = {
+ 	.get_orientation = st7701_get_orientation,
+ };
+
++// My Driver
++static const struct drm_display_mode tft34_485_mode = {
++	.clock		= 20000, // tft34.RGB_CLOCK
++
++	.hdisplay	= 480, // tft34.Resolution
++	.hsync_start	= 480 + 20, // tft34.horizontal_frontporch
++	.hsync_end	= 480 + 20 + 8, // tft34.horizontal_sync_active
++	.htotal		= 480 + 38 + 8 + 56, // tft34.horizontal_backporch
++
++	.vdisplay	= 480, // tft34.Resolution
++	.vsync_start	= 480 + 40, // tft34.vertical_frontporch
++	.vsync_end	= 480 + 40 + 10, //tft34.vertical_sync_active
++	.vtotal		= 480 + 40 + 10 + 60, // tft34.vertical_backporch
++
++	.width_mm	= 69,
++	.height_mm	= 139,
++
++	.type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED,
++};
++
++static const struct st7701_panel_desc tft34_485_desc = {
++	.mode = &tft34_485_mode,
++	.lanes = 2,
++	.format = MIPI_DSI_FMT_RGB888,
++	.panel_sleep_delay = 120, // tft34.panel_sleep_delay
++
++	.pv_gamma = { // tft34.gamma1
++        0x40,
++        0x0E,
++        0x58,
++        0x0E,
++        0x12,
++        0x08,
++        0x0C,
++        0x09,
++        0x09,
++        0x27,
++        0x07,
++        0x18,
++        0x15,
++        0x78,
++        0x26,
++        0xC7
++	},
++	.nv_gamma = { // tft34.gamma2
++        0x40,
++        0x13,
++        0x5B,
++        0x0D,
++        0x11,
++        0x06,
++        0x0A,
++        0x08,
++        0x08,
++        0x26,
++        0x03,
++        0x13,
++        0x12,
++        0x79,
++        0x28,
++        0xC9
++	},
++	.nlinv = 7,
++	.vop_uv = 4900000, // tft42.vop_uv
++	.vcom_uv = 800000, // tft42.vcom
++	.vgh_mv = 15000,
++	.vgl_mv = -12200,
++	.avdd_mv = 6200, // tft42.avdd_mv
++	.avcl_mv = -4400, // tft42.avcl_mv
++	.gamma_op_bias = OP_BIAS_MIDDLE, // tft42.gamma
++	.input_op_bias = OP_BIAS_MIN, // tft42.gamma
++	.output_op_bias = OP_BIAS_MIN, // tft42.gamma
++	.t2d_ns = 1600, // tft42.t2d_ns
++	.t3d_ns = 10400, // tft42.t3d_ns
++	.eot_en = true, // tft42.eot_en
++	.gip_sequence = tft34_485_gip_sequence,
++};
++
+ static const struct drm_display_mode ts8550b_mode = {
+ 	.clock		= 27500,
+
+@@ -1265,6 +1374,7 @@ static const struct of_device_id st7701_dsi_of_match[] = {
+ 	{ .compatible = "densitron,dmt028vghmcmi-1a", .data = &dmt028vghmcmi_1a_desc },
+ 	{ .compatible = "elida,kd50t048a", .data = &kd50t048a_desc },
+ 	{ .compatible = "techstar,ts8550b", .data = &ts8550b_desc },
++	{ .compatible = "displaymodule,tft34-485", .data = &tft34_485_desc },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(of, st7701_dsi_of_match);
