@@ -174,12 +174,12 @@
     status = "okay";
     panel: panel@0 {
         status = "okay";
-        compatible = "displaymodule,tft34-485";
+        compatible = "displaymodule,tft34-485", "sitronix,st7701";
         reg = <0>;
         backlight = <&backlight>;
         VCC-supply = <&reg_vcc3v3>;
         IOVCC-supply = <&reg_vcc3v3>;
         pinctrl-names = "default";
-        reset-gpios = <&pio 7 4 GPIO_ACTIVE_LOW>; /* PH4 */
+        reset-gpios = <&pio 7 4 GPIO_ACTIVE_HIGH>; /* PH4 */
     };
 };
