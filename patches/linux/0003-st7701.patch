@@ -1,35 +1,35 @@
 diff --git a/drivers/gpu/drm/panel/panel-sitronix-st7701.c b/drivers/gpu/drm/panel/panel-sitronix-st7701.c
-index 1f72ef7ca74c..8c0c3f766f89 100644
+index 1f72ef7ca74c..2908a98df3c9 100644
 --- a/drivers/gpu/drm/panel/panel-sitronix-st7701.c
 +++ b/drivers/gpu/drm/panel/panel-sitronix-st7701.c
 @@ -221,6 +221,7 @@ static void st7701_init_sequence(struct st7701 *st7701)
  	msleep(st7701->sleep_delay);
-
+ 
  	/* Command2, BK0 */
 +	// tft34.write1
  	st7701_switch_cmd_bkx(st7701, true, 0);
-
+ 
  	st7701->write_command(st7701, ST7701_CMD2_BK0_PVGAMCTRL, desc->pv_gamma,
 @@ -280,13 +281,16 @@ static void st7701_init_sequence(struct st7701 *st7701)
  						      (u16)17000) - 11500,
  						500)));
-
+ 
 +	// tft42.testcmd
  	ST7701_WRITE(st7701, ST7701_CMD2_BK1_TESTCMD, ST7701_CMD2_BK1_TESTCMD_VAL);
-
+ 
  	/* Vgl is non-linear */
 +	// tft42.st7701_cmd2_bk1_vgls_ones
  	ST7701_WRITE(st7701, ST7701_CMD2_BK1_VGLS,
  		   ST7701_CMD2_BK1_VGLS_ONES |
  		   FIELD_PREP(ST7701_CMD2_BK1_VGLS_MASK, st7701_vgls_map(st7701)));
-
+ 
 +	// tft42.gamma
  	ST7701_WRITE(st7701, ST7701_CMD2_BK1_PWCTLR1,
  		   FIELD_PREP(ST7701_CMD2_BK1_PWRCTRL1_AP_MASK,
  			      desc->gamma_op_bias) |
 @@ -296,6 +300,7 @@ static void st7701_init_sequence(struct st7701 *st7701)
  			      desc->output_op_bias));
-
+ 
  	/* Avdd = 6.2V + (AVDD[1:0] * 0.2V) , Avcl = -4.4V - (AVCL[1:0] * 0.2V) */
 +	// tft42.avdd_mv
  	ST7701_WRITE(st7701, ST7701_CMD2_BK1_PWCTLR2,
@@ -37,27 +37,27 @@ index 1f72ef7ca74c..8c0c3f766f89 100644
  			      DIV_ROUND_CLOSEST(desc->avdd_mv - 6200, 200)) |
 @@ -303,22 +308,48 @@ static void st7701_init_sequence(struct st7701 *st7701)
  			      DIV_ROUND_CLOSEST(-4400 - desc->avcl_mv, 200)));
-
+ 
  	/* T2D = 0.2us * T2D[3:0] */
 +	// tft42.t2d_ns
  	ST7701_WRITE(st7701, ST7701_CMD2_BK1_SPD1,
  		   ST7701_CMD2_BK1_SPD1_ONES_MASK |
  		   FIELD_PREP(ST7701_CMD2_BK1_SPD1_T2D_MASK,
  			      DIV_ROUND_CLOSEST(desc->t2d_ns, 200)));
-
+ 
  	/* T3D = 4us + (0.8us * T3D[3:0]) */
 +	// tft42.t3d_ns
  	ST7701_WRITE(st7701, ST7701_CMD2_BK1_SPD2,
  		   ST7701_CMD2_BK1_SPD2_ONES_MASK |
  		   FIELD_PREP(ST7701_CMD2_BK1_SPD2_T3D_MASK,
  			      DIV_ROUND_CLOSEST(desc->t3d_ns - 4000, 800)));
-
+ 
 +	// tft42.eot_en
  	ST7701_WRITE(st7701, ST7701_CMD2_BK1_MIPISET1,
  		   ST7701_CMD2_BK1_MIPISET1_ONES |
  		   (desc->eot_en ? ST7701_CMD2_BK1_MIPISET1_EOT_EN : 0));
  }
-
+ 
 +static void tft34_485_gip_sequence(struct st7701 *st7701)
 +{
 +	ST7701_WRITE(st7701, 0xE0, 0x00, 0x00, 0x02); // tft34.gip1
@@ -78,7 +78,7 @@ index 1f72ef7ca74c..8c0c3f766f89 100644
 +	ST7701_WRITE(st7701, 0xED, 0xFF, 0x45, 0x67, 0xFA, 0x01, 0x2B, 0xCF,
 +		   0xFF, 0xFF, 0xFC, 0xB2, 0x10, 0xAF, 0x76, 0x54, 0xFF); // tft34.gip12
 +	ST7701_WRITE(st7701, 0xEF, 0x10, 0x0D, 0x04, 0x08, 0x3F, 0x1F); // tft34.gip13
-+	ST7701_WRITE(st7701, 0xFF, 0x10, 0x0D, 0x04, 0x08, 0x3F, 0x1F); // tft34.gip14
++	ST7701_WRITE(st7701, 0xFF, 0x77, 0x01, 0x00, 0x00, 0x00); // tft34.gip14
 +}
 +
  static void ts8550b_gip_sequence(struct st7701 *st7701)
@@ -87,23 +87,23 @@ index 1f72ef7ca74c..8c0c3f766f89 100644
 @@ -637,6 +668,84 @@ static const struct drm_panel_funcs st7701_funcs = {
  	.get_orientation = st7701_get_orientation,
  };
-
+ 
 +// My Driver
 +static const struct drm_display_mode tft34_485_mode = {
 +	.clock		= 20000, // tft34.RGB_CLOCK
 +
 +	.hdisplay	= 480, // tft34.Resolution
-+	.hsync_start	= 480 + 20, // tft34.horizontal_frontporch
++	.hsync_start= 480 + 20, // tft34.horizontal_frontporch
 +	.hsync_end	= 480 + 20 + 8, // tft34.horizontal_sync_active
-+	.htotal		= 480 + 38 + 8 + 56, // tft34.horizontal_backporch
++	.htotal		= 480 + 20 + 8 + 56, // tft34.horizontal_backporch
 +
 +	.vdisplay	= 480, // tft34.Resolution
-+	.vsync_start	= 480 + 40, // tft34.vertical_frontporch
++	.vsync_start= 480 + 40, // tft34.vertical_frontporch
 +	.vsync_end	= 480 + 40 + 10, //tft34.vertical_sync_active
 +	.vtotal		= 480 + 40 + 10 + 60, // tft34.vertical_backporch
 +
-+	.width_mm	= 69,
-+	.height_mm	= 139,
++	.width_mm	= 60,
++	.height_mm	= 60,
 +
 +	.type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED,
 +};
@@ -168,7 +168,7 @@ index 1f72ef7ca74c..8c0c3f766f89 100644
 +
  static const struct drm_display_mode ts8550b_mode = {
  	.clock		= 27500,
-
+ 
 @@ -1265,6 +1374,7 @@ static const struct of_device_id st7701_dsi_of_match[] = {
  	{ .compatible = "densitron,dmt028vghmcmi-1a", .data = &dmt028vghmcmi_1a_desc },
  	{ .compatible = "elida,kd50t048a", .data = &kd50t048a_desc },
