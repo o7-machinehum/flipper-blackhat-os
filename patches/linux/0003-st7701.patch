@@ -1,5 +1,5 @@
 diff --git a/drivers/gpu/drm/panel/panel-sitronix-st7701.c b/drivers/gpu/drm/panel/panel-sitronix-st7701.c
-index 1f72ef7ca74c..2908a98df3c9 100644
+index 1f72ef7ca74c..4aa309ce6e35 100644
 --- a/drivers/gpu/drm/panel/panel-sitronix-st7701.c
 +++ b/drivers/gpu/drm/panel/panel-sitronix-st7701.c
 @@ -221,6 +221,7 @@ static void st7701_init_sequence(struct st7701 *st7701)
@@ -93,14 +93,14 @@ index 1f72ef7ca74c..2908a98df3c9 100644
 +	.clock		= 20000, // tft34.RGB_CLOCK
 +
 +	.hdisplay	= 480, // tft34.Resolution
-+	.hsync_start= 480 + 20, // tft34.horizontal_frontporch
-+	.hsync_end	= 480 + 20 + 8, // tft34.horizontal_sync_active
-+	.htotal		= 480 + 20 + 8 + 56, // tft34.horizontal_backporch
++	.hsync_start= 480 + 56, // tft34.horizontal_frontporch
++	.hsync_end	= 480 + 56 + 8, // tft34.horizontal_sync_active
++	.htotal		= 480 + 56 + 8 + 20, // tft34.horizontal_backporch
 +
 +	.vdisplay	= 480, // tft34.Resolution
-+	.vsync_start= 480 + 40, // tft34.vertical_frontporch
-+	.vsync_end	= 480 + 40 + 10, //tft34.vertical_sync_active
-+	.vtotal		= 480 + 40 + 10 + 60, // tft34.vertical_backporch
++	.vsync_start= 480 + 60, // tft34.vertical_frontporch
++	.vsync_end	= 480 + 60 + 10, //tft34.vertical_sync_active
++	.vtotal		= 480 + 60 + 10 + 40, // tft34.vertical_backporch
 +
 +	.width_mm	= 60,
 +	.height_mm	= 60,
