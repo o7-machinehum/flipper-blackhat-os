@@ -1,4 +1,5 @@
 #!/bin/bash
+exec > >(tee /dev/tty1) 2>&1
 
 CONFIG_F=blackhat.conf
 
