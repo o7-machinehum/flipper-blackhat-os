@@ -181,5 +181,6 @@
         IOVCC-supply = <&reg_vcc3v3>;
         pinctrl-names = "default";
         reset-gpios = <&pio 7 4 GPIO_ACTIVE_HIGH>; /* PH4 */
+        rotation = <90>;
     };
 };
