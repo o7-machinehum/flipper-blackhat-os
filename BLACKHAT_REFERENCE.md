@@ -50,8 +50,6 @@ bh evil_portal stop         # Stop captive portal
 ```
 Deploys a captive portal that intercepts and captures user credentials. The portal can use custom HTML pages:
 - `index.html` - Primary portal page
-- `index2.html` - Secondary portal page  
-- `index3.html` - Tertiary portal page
 
 ### Deauthentication Attacks
 
