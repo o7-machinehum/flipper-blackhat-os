@@ -1,1 +1,28 @@
 https://sudamtm.medium.com/iptables-a-comprehensive-guide-276b8604eff1
+
+https://www.alibaba.com/product-detail/LH397K-IC01-MIPI-B2B-Connector-ST7701S_1601239561883.html?spm=a2700.galleryofferlist.normal_offer.d_title.3ad713a0K3nk7E
+
+modprobe panel-sitronix-st7701 \
+  mod_hsync_start=500 \
+  mod_hsync_end=556 \
+  mod_htotal=564 \
+  mod_vsync_start=520 \
+  mod_vsync_end=580 \
+  mod_vtotal=590
+
+export SDL_VIDEODRIVER=kmsdrm
+export SDL_DRM_DEVICE=/dev/dri/card1
+chocolate-doom
+
+video_driver                  ""
+window_position               "center"
+fullscreen                    1
+video_display                 0
+aspect_ratio_correct          1
+integer_scaling               0
+vga_porch_flash               0
+window_width                  480
+window_height                 360
+fullscreen_width              480
+fullscreen_height             360
+force_software_renderer       1
