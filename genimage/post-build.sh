@@ -7,6 +7,7 @@ mkdir $BINARIES_DIR 2>/dev/null
 mkdir $BINARIES_DIR/scripts/ 2>/dev/null
 
 cp $CONFIG_DIR/../genimage/readme.txt $BINARIES_DIR/
+cp $CONFIG_DIR/../genimage/cmdline.txt $BINARIES_DIR/
 cp $CONFIG_DIR/../rootfs_overlay/var/www/index.html $BINARIES_DIR/
 cp $CONFIG_DIR/../package/blackhat/src/blackhat.conf $BINARIES_DIR/
 
