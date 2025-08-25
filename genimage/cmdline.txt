@@ -1,0 +1,1 @@
+bootargs=console=ttyS0,115200 rootwait panic=10 fbcon=rotate:1 loglevel=3

@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# LED
+echo 1 > /sys/devices/platform/leds/leds/blackhat:green:usr/brightness
+
+# Screen or no screen.
+source /mnt/blackhat.conf
+
+if [[ "${SCREEN_ENABLED}" == "true" ]]; then
+    echo "Starting Screen"
+    modprobe pwm_bl
+    modprobe panel_sitronix_st7701
+else
+    echo "Set SCREEN_ENABLED=true (/mnt/blackhat.conf) to enable screen."
+fi

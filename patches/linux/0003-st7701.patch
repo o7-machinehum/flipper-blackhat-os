@@ -1,11 +1,11 @@
 diff --git a/drivers/gpu/drm/panel/panel-sitronix-st7701.c b/drivers/gpu/drm/panel/panel-sitronix-st7701.c
-index 1f72ef7ca74c..0e7ed43c568b 100644
+index 1f72ef7ca74c..9037ab68ce28 100644
 --- a/drivers/gpu/drm/panel/panel-sitronix-st7701.c
 +++ b/drivers/gpu/drm/panel/panel-sitronix-st7701.c
 @@ -319,6 +319,29 @@ static void st7701_init_sequence(struct st7701 *st7701)
  		   (desc->eot_en ? ST7701_CMD2_BK1_MIPISET1_EOT_EN : 0));
  }
- 
+
 +static void tft34_485_gip_sequence(struct st7701 *st7701)
 +{
 +	ST7701_WRITE(st7701, 0xE0, 0x00, 0x00, 0x02); // tft34.gip1
@@ -32,22 +32,67 @@ index 1f72ef7ca74c..0e7ed43c568b 100644
  static void ts8550b_gip_sequence(struct st7701 *st7701)
  {
  	/**
-@@ -637,6 +660,83 @@ static const struct drm_panel_funcs st7701_funcs = {
+@@ -591,11 +614,28 @@ static int st7701_unprepare(struct drm_panel *panel)
+ 	return 0;
+ }
+
++static u16 g_hsync_start   = 520;
++static u16 g_hsync_end     = 580;
++static u16 g_htotal        = 597;
++static u16 g_vsync_start   = 520;
++static u16 g_vsync_end     = 580;
++static u16 g_vtotal        = 597;
++
++module_param(g_hsync_start, ushort, 0444);
++module_param(g_hsync_end, ushort, 0444);
++module_param(g_htotal, ushort, 0444);
++module_param(g_vsync_start, ushort, 0444);
++module_param(g_vsync_end, ushort, 0444);
++module_param(g_vtotal, ushort, 0444);
++
++// modprobe panel-sitronix-st7701 \
++//   g_hsync_start=550
++
+ static int st7701_get_modes(struct drm_panel *panel,
+ 			    struct drm_connector *connector)
+ {
+ 	struct st7701 *st7701 = panel_to_st7701(panel);
+-	const struct drm_display_mode *desc_mode = st7701->desc->mode;
++	struct drm_display_mode *desc_mode = st7701->desc->mode;
+ 	struct drm_display_mode *mode;
+
+ 	mode = drm_mode_duplicate(connector->dev, desc_mode);
+@@ -606,6 +646,14 @@ static int st7701_get_modes(struct drm_panel *panel,
+ 		return -ENOMEM;
+ 	}
+
++	// Hack this shit in
++	desc_mode->hsync_start  = g_hsync_start;
++	desc_mode->hsync_end    = g_hsync_end;
++	desc_mode->htotal       = g_htotal;
++	desc_mode->vsync_start  = g_vsync_start;
++	desc_mode->vsync_end    = g_vsync_end;
++	desc_mode->vtotal       = g_vtotal;
++
+ 	drm_mode_set_name(mode);
+ 	drm_mode_probed_add(connector, mode);
+
+@@ -637,6 +685,83 @@ static const struct drm_panel_funcs st7701_funcs = {
  	.get_orientation = st7701_get_orientation,
  };
- 
-+static const struct drm_display_mode tft34_485_mode = {
+
++static struct drm_display_mode tft34_485_mode = {
 +	.clock		= 20000,
 +
-+	.hdisplay	= 480,
-+	.hsync_start= 480 + 20,
-+	.hsync_end	= 480 + 20 + 56,
-+	.htotal		= 480 + 20 + 8 + 56,
++	.hdisplay   = 480,
++	.hsync_start= 520,
++	.hsync_end  = 580,
++	.htotal     = 597,
 +
-+	.vdisplay	= 480,
-+	.vsync_start= 480 + 40,
-+	.vsync_end	= 480 + 40 + 60,
-+	.vtotal		= 480 + 40 + 10 + 60,
++	.vdisplay   = 480,
++	.vsync_start= 520,
++	.vsync_end  = 580,
++	.vtotal     = 597,
 +
 +	.width_mm	= 60,
 +	.height_mm	= 60,
@@ -55,7 +100,7 @@ index 1f72ef7ca74c..0e7ed43c568b 100644
 +	.type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED,
 +};
 +
-+static const struct st7701_panel_desc tft34_485_desc = {
++static struct st7701_panel_desc tft34_485_desc = {
 +	.mode = &tft34_485_mode,
 +	.lanes = 2,
 +	.format = MIPI_DSI_FMT_RGB888,
@@ -115,8 +160,8 @@ index 1f72ef7ca74c..0e7ed43c568b 100644
 +
  static const struct drm_display_mode ts8550b_mode = {
  	.clock		= 27500,
- 
-@@ -1265,6 +1365,7 @@ static const struct of_device_id st7701_dsi_of_match[] = {
+
+@@ -1265,6 +1390,7 @@ static const struct of_device_id st7701_dsi_of_match[] = {
  	{ .compatible = "densitron,dmt028vghmcmi-1a", .data = &dmt028vghmcmi_1a_desc },
  	{ .compatible = "elida,kd50t048a", .data = &kd50t048a_desc },
  	{ .compatible = "techstar,ts8550b", .data = &ts8550b_desc },

@@ -7,6 +7,7 @@ mkdir $BINARIES_DIR 2>/dev/null
 mkdir $BINARIES_DIR/scripts/ 2>/dev/null
 
 cp $CONFIG_DIR/../genimage/readme.txt $BINARIES_DIR/
+cp $CONFIG_DIR/../genimage/cmdline.txt $BINARIES_DIR/
 cp $CONFIG_DIR/../rootfs_overlay/var/www/index.html $BINARIES_DIR/
 cp $CONFIG_DIR/../package/blackhat/src/blackhat.conf $BINARIES_DIR/
 
@@ -20,4 +21,7 @@ rm -f $TARGET_DIR/etc/init.d/S50dropbear
 rm -f $TARGET_DIR/etc/init.d/S50nginx
 rm -f $TARGET_DIR/etc/init.d/S35iptables
 rm -f $TARGET_DIR/etc/init.d/S40network
+rm -f $TARGET_DIR/etc/init.d/S49ntp
+rm -f $TARGET_DIR/etc/init.d/S50crond
+rm -f $TARGET_DIR/etc/init.d/S50gpsd
 rm -f $TARGET_DIR/etc/init.d/S80dnsmasq
