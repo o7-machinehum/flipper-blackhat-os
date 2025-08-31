@@ -1,6 +1,7 @@
 #!/bin/bash
 set -m
 exec > >(tee /dev/tty1) 2>&1
+export PYTHONUNBUFFERED=1
 
 CONFIG_F=blackhat.conf
 

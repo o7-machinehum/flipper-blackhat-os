@@ -1,0 +1,17 @@
+#!/bin/sh
+
+start() {
+    echo "First Boot, setting up partitions. Do not Power off."
+    echo ',,c' | sfdisk --force -a -N 3 /dev/mmcblk0
+    echo "Finished, rebooting"
+    rm /etc/init.d/S99part_setup
+    reboot
+}
+
+case "$1" in
+    start)
+        "$1";;
+    *)
+        echo "Usage: $0 {start|stop}"
+        exit 1
+esac
