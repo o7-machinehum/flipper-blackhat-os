@@ -182,6 +182,10 @@ function set_param() {
     sed -i "/^export $1=/cexport $1=\'$2\'" "$CONFIG_F"
 }
 
+function get_param() {
+    grep "export $1" "$CONFIG_F" | cut -d"'" -f2
+}
+
 function check() {
     if [ -z "$1" ]; then
         print_help
@@ -458,8 +462,7 @@ case "$subcommand" in
         set_param "$@"
         ;;
     get)
-        echo "Loaded Config: $CONFIG_F"
-        cat "$CONFIG_F"
+        get_param "$@"
         ;;
     wifi)
         wifi "$@"

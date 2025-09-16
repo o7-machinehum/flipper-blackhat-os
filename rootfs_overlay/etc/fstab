@@ -1,7 +1,7 @@
 # <file system> <mount pt>  <type>  <options>   <dump>  <pass>
 /dev/root       /           ext2    rw,noauto   0   1
-/dev/mmcblk0p1  /mnt        vfat    rw  0   0
-/dev/mmcblk1p1  /mnt        vfat    rw  0   0
+/dev/mmcblk0p1  /mnt        vfat    rw,sync,dirsync  0   0
+/dev/mmcblk1p1  /mnt        vfat    rw,sync,dirsync  0   0
 proc            /proc       proc    defaults    0   0
 devpts          /dev/pts    devpts  defaults,gid=5,mode=620,ptmxmode=0666   0   0
 tmpfs           /dev/shm    tmpfs   mode=1777   0   0
