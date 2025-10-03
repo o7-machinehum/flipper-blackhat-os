@@ -23,6 +23,7 @@ class Telegram:
 
     def send(self, msg):
         if self.bot_token == "" or self.chat_id == "":
+            print("Empty bot token or chat_id. Check /mnt/blackhat.conf")
             return
 
         url = f'https://api.telegram.org/bot{self.bot_token}/sendMessage'

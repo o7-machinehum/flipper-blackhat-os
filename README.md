@@ -27,3 +27,11 @@ And compile:
 	make
 
 https://www.displaymodule.com/products/3-4480-x-480-transmissive-tft-lcd-mipi?srsltid=AfmBOopuBE7VW4B4JgDqSElYPpUfOnb6hvi7ahoVilX0Sr6CRt9YqKB_
+
+## Notes
+    - Fluxbox
+    - Matchbox
+    - Openbox
+    - Look around here
+    - Ratpoision looks good
+
