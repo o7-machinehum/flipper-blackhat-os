@@ -1,9 +1,7 @@
 # Flipper Blackhat OS
-
-A WiFi security testing platform built on embedded Linux for penetration testing and network analysis.
+A WiFi security testing OS built on Linux for penetration testing and network analysis. Designed to with with the Flipper Blackhat.
 
 ## Documentation
-
 For complete functionality reference and usage examples, see [BLACKHAT_REFERENCE.md](BLACKHAT_REFERENCE.md).
 
 ## Releases
@@ -25,13 +23,3 @@ Initialize the configuration, including the defconfig and this external director
 And compile:
 
 	make
-
-https://www.displaymodule.com/products/3-4480-x-480-transmissive-tft-lcd-mipi?srsltid=AfmBOopuBE7VW4B4JgDqSElYPpUfOnb6hvi7ahoVilX0Sr6CRt9YqKB_
-
-## Notes
-    - Fluxbox
-    - Matchbox
-    - Openbox
-    - Look around here
-    - Ratpoision looks good
-
