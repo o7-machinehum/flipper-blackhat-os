@@ -1,3 +1,7 @@
 [submodule "buildroot"]
 	path = buildroot
-	url = git@github.com:buildroot/buildroot.git
+	url = git@github.com:o7-machinehum/buildroot.git
+
+[submodule "Bjorn-blackhat"]
+	path = package/bjorn/bjorn
+	url = git@github.com:o7-machinehum/Bjorn-blackhat.git
