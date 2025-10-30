@@ -17,10 +17,13 @@ cp $CONFIG_DIR/../package/blackhat/scripts/port_scan.py $BINARIES_DIR/scripts/
 cp $CONFIG_DIR/../package/blackhat/scripts/data_thief.py $BINARIES_DIR/scripts/
 cp $CONFIG_DIR/../package/blackhat/scripts/data_loader.py $BINARIES_DIR/scripts/
 cp $CONFIG_DIR/../package/blackhat/scripts/telegram_example.py $BINARIES_DIR/scripts/
+cp $CONFIG_DIR/../package/blackhat/scripts/start_bjorn.sh $BINARIES_DIR/scripts/
+cp $CONFIG_DIR/../package/blackhat/scripts/stop_bjorn.sh $BINARIES_DIR/scripts/
 
 rm -f $TARGET_DIR/etc/init.d/S50dropbear
 rm -f $TARGET_DIR/etc/init.d/S50nginx
 rm -f $TARGET_DIR/etc/init.d/S35iptables
 rm -f $TARGET_DIR/etc/init.d/S40network
+rm -f $TARGET_DIR/etc/init.d/S40xorg
 rm -f $TARGET_DIR/etc/init.d/S50gpsd
 rm -f $TARGET_DIR/etc/init.d/S80dnsmasq

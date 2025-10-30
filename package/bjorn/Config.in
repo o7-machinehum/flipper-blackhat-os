@@ -1,0 +1,18 @@
+config BR2_PACKAGE_BJORN
+    bool "bjorn"
+    help
+        Bjorn is a Tamagotchi like sophisticated, autonomous network scanning, vulnerability assessment, and offensive security tool
+
+    select BR2_PACKAGE_LSOF
+    select BR2_PACKAGE_PYTHON_NETIFACES
+    select BR2_PACKAGE_PYTHON_PIP
+    select BR2_PACKAGE_PYTHON_PYMYSQL
+    select BR2_PACKAGE_PYTHON_PYSMB
+    select BR2_PACKAGE_PYTHON_SMBPROTOCOL
+    select BR2_PACKAGE_PYTHON_SQLALCHEMY
+    select BR2_PACKAGE_PYTHON_LEGACY_CGI
+    select BR2_PACKAGE_GNUTLS_OPENSSL
+    select BR2_PACKAGE_WGET
+    select BR2_PACKAGE_PYTHON_PANDAS
+    select BR2_PACKAGE_PYTHON_GETMAC
+    select BR2_PACKAGE_PYTHON_RICH

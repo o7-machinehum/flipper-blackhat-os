@@ -1,0 +1,6 @@
+config BR2_PACKAGE_PYTHON_RICH
+    bool "python-rich"
+    help
+        Rich is a Python library for rich text and beautiful formatting in the terminal.
+
+   select BR2_PACKAGE_PYTHON_PYGMENTS

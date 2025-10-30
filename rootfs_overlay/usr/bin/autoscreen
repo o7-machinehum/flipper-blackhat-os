@@ -1,0 +1,6 @@
+#!/bin/sh
+if screen -ls 2>/dev/null | grep -q '\.gui'; then
+  exec screen -x gui
+fi
+
+exec /bin/sh -l

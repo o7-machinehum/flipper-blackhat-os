@@ -12,12 +12,15 @@ start() {
     else
         echo "Set SCREEN_ENABLED=true (/mnt/blackhat.conf) to enable screen."
     fi
+
+    startx >/dev/null &
 }
 
 stop() {
     echo 0 > /sys/devices/platform/leds/leds/blackhat:green:usr/brightness
 
     source /mnt/blackhat.conf
+    kill -9 $(pidof Xorg)
 
     if [[ "${SCREEN_ENABLED}" == "true" ]]; then
         echo "Stopping Screen"
