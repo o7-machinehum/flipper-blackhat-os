@@ -23,7 +23,10 @@ BJORN_DEPENDENCIES = \
     python-pysmb \
     python-smbprotocol \
     python-sqlalchemy \
-    python-legacy-cgi
+    python-legacy-cgi \
+    python-pandas \
+    python-getmac \
+    python-rich
 
 BJORN_LICENSE = MIT
 BJORN_LICENSE_FILES = LICENSE
