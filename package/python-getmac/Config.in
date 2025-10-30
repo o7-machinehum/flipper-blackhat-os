@@ -1,0 +1,4 @@
+config BR2_PACKAGE_PYTHON_GETMAC
+    bool "python-getmac"
+    help
+        Pure-Python package to get the MAC address of network interfaces and hosts on the local network.

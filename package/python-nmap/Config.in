@@ -2,5 +2,3 @@ config BR2_PACKAGE_PYTHON_NMAP
     bool "python-nmap"
     help
         A python 3 library which helps in using nmap port scanner.
-
-    select BR2_PACKAGE_PYTHON_SIMPLEJSON
