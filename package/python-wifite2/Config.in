@@ -1,0 +1,10 @@
+config BR2_PACKAGE_PYTHON_WIFITE2
+    bool "python-wifite2"
+    help
+        Python script for auditing wireless networks.
+
+    select BR2_PACKAGE_PYTHON_CHARDET
+    select BR2_PACKAGE_PYTHON_REQUESTS
+    select BR2_PACKAGE_PYTHON_RICH
+    select BR2_PACKAGE_PYTHON_SCAPY
+    select BR2_PACKAGE_PYTHON_VERSION

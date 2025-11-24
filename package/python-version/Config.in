@@ -1,0 +1,4 @@
+config BR2_PACKAGE_PYTHON_VERSION
+    bool "python-version"
+    help
+        This package provides a basic python version checking utility.
