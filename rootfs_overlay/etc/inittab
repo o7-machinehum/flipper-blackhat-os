@@ -31,6 +31,9 @@ null::sysinit:/bin/ln -sf /proc/self/fd/2 /dev/stderr
 # Put a getty on the serial port
 ttyS0::respawn:-/bin/sh
 
+# Put a getty on the screen
+tty1::respawn:-/bin/sh
+
 # ttyS0::respawn:/sbin/getty -L -n -l /bin/sh ttyS0 0 vt100 # GENERIC_SERIAL
 
 # Stuff to do for the 3-finger salute

@@ -4,31 +4,17 @@ start() {
     echo 1 > /sys/devices/platform/leds/leds/blackhat:green:usr/brightness
 
     source /mnt/blackhat.conf
-
-    if [[ "${SCREEN_ENABLED}" == "true" ]]; then
-        modprobe pwm_bl
-        modprobe panel_sitronix_st7701
-    else
-        echo "Set SCREEN_ENABLED=true (/mnt/blackhat.conf) to enable screen."
-    fi
-
-    startx >/dev/null 2>&1 &
-    echo "Starting xserver: OK"
+    modprobe pwm_bl
+    modprobe panel_sitronix_st7701
     echo "Welcome to BlackhatOS."
-    echo "To connect with screen issue cmd: autoscreen"
 }
 
 stop() {
     echo 0 > /sys/devices/platform/leds/leds/blackhat:green:usr/brightness
 
     source /mnt/blackhat.conf
-    kill -9 $(pidof Xorg)
-
-    if [[ "${SCREEN_ENABLED}" == "true" ]]; then
-        echo "Stopping Screen"
-        rmmod pwm_bl
-        rmmod panel_sitronix_st7701
-    fi
+    rmmod pwm_bl
+    rmmod panel_sitronix_st7701
 }
 
 case "$1" in
