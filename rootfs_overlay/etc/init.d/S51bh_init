@@ -1,20 +1,31 @@
 #!/bin/sh
 
 start() {
-    echo 1 > /sys/devices/platform/leds/leds/blackhat:green:usr/brightness
-
+    TARGET=0424:2514
+    if lsusb -d "$TARGET" >/dev/null 2>&1; then
+        # If Blackpants
+        echo 2 > /sys/class/graphics/fbcon/rotate
+        mount --bind /boot/bh /mnt/
+    else
+        # Else Flipper
+        echo 1 > /sys/devices/platform/leds/leds/blackhat:green:usr/brightness
+        modprobe pwm_bl
+        modprobe panel_sitronix_st7701
+    fi
     source /mnt/blackhat.conf
-    modprobe pwm_bl
-    modprobe panel_sitronix_st7701
     echo "Welcome to BlackhatOS."
 }
 
 stop() {
-    echo 0 > /sys/devices/platform/leds/leds/blackhat:green:usr/brightness
-
-    source /mnt/blackhat.conf
-    rmmod pwm_bl
-    rmmod panel_sitronix_st7701
+    TARGET=0424:2514
+    if lsusb -d "$TARGET" >/dev/null 2>&1; then
+        echo 2 > /sys/class/graphics/fbcon/rotate
+        umount /mnt/
+    else
+        echo 0 > /sys/devices/platform/leds/leds/blackhat:green:usr/brightness
+        rmmod pwm_bl
+        rmmod panel_sitronix_st7701
+    fi
 }
 
 case "$1" in

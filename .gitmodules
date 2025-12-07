@@ -6,3 +6,6 @@
 [submodule "Bjorn-blackhat"]
 	path = package/bjorn/bjorn
 	url = git@github.com:o7-machinehum/Bjorn-blackhat.git
+[submodule "armbian"]
+	path = armbian
+	url = https://github.com/armbian/build

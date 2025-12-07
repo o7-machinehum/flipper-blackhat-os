@@ -1,0 +1,171 @@
+diff --git a/drivers/gpu/drm/panel/panel-sitronix-st7701.c b/drivers/gpu/drm/panel/panel-sitronix-st7701.c
+index 1f72ef7ca74c..9037ab68ce28 100644
+--- a/drivers/gpu/drm/panel/panel-sitronix-st7701.c
++++ b/drivers/gpu/drm/panel/panel-sitronix-st7701.c
+@@ -319,6 +319,29 @@ static void st7701_init_sequence(struct st7701 *st7701)
+ 		   (desc->eot_en ? ST7701_CMD2_BK1_MIPISET1_EOT_EN : 0));
+ }
+
++static void tft34_485_gip_sequence(struct st7701 *st7701)
++{
++	ST7701_WRITE(st7701, 0xE0, 0x00, 0x00, 0x02); // tft34.gip1
++	ST7701_WRITE(st7701, 0xE1, 0x06, 0x30, 0x08, 0x30, 0x05, 0x30, 0x07,
++		   0x30, 0x00, 0x33, 0x33); // tft34.gip2
++	ST7701_WRITE(st7701, 0xE2, 0x11, 0x11, 0x33, 0x33, 0xf4, 0x00, 0x00,
++		   0x00, 0xf4, 0x00, 0x00, 0x00); // tft34.gip3
++	ST7701_WRITE(st7701, 0xE3, 0x00, 0x00, 0x11, 0x11); // tft34.gip4
++	ST7701_WRITE(st7701, 0xE4, 0x44, 0x44); // tft34.gip5
++	ST7701_WRITE(st7701, 0xE5, 0x0D, 0xF5, 0x30, 0xF0, 0x0F, 0xF7, 0x30,
++		   0xF0, 0x09, 0xF1, 0x30, 0xF0, 0x0B, 0xF3, 0x30, 0xF0); // tft34.gip6
++	ST7701_WRITE(st7701, 0xE6, 0x00, 0x00, 0x11, 0x11); // tft34.gip7
++	ST7701_WRITE(st7701, 0xE7, 0x44, 0x44); // tft34.gip8
++	ST7701_WRITE(st7701, 0xE8, 0x0C, 0xF4, 0x30, 0xF0, 0x0E, 0xF6, 0x30,
++		   0xF0, 0x08, 0xF0, 0x30, 0xF0, 0x0A, 0xF2, 0x30, 0xF0); // tft34.gip9
++	ST7701_WRITE(st7701, 0xE9, 0x36, 0x01); // tft34.gip10
++	ST7701_WRITE(st7701, 0xEB, 0x00, 0x01, 0xE4, 0xE4, 0x44, 0x88, 0x40); // tft34.gip11
++	ST7701_WRITE(st7701, 0xED, 0xFF, 0x45, 0x67, 0xFA, 0x01, 0x2B, 0xCF,
++		   0xFF, 0xFF, 0xFC, 0xB2, 0x10, 0xAF, 0x76, 0x54, 0xFF); // tft34.gip12
++	ST7701_WRITE(st7701, 0xEF, 0x10, 0x0D, 0x04, 0x08, 0x3F, 0x1F); // tft34.gip13
++	ST7701_WRITE(st7701, 0xFF, 0x77, 0x01, 0x00, 0x00, 0x00); // tft34.gip14
++}
++
+ static void ts8550b_gip_sequence(struct st7701 *st7701)
+ {
+ 	/**
+@@ -591,11 +614,28 @@ static int st7701_unprepare(struct drm_panel *panel)
+ 	return 0;
+ }
+
++static u16 g_hsync_start   = 520;
++static u16 g_hsync_end     = 580;
++static u16 g_htotal        = 597;
++static u16 g_vsync_start   = 520;
++static u16 g_vsync_end     = 580;
++static u16 g_vtotal        = 597;
++
++module_param(g_hsync_start, ushort, 0444);
++module_param(g_hsync_end, ushort, 0444);
++module_param(g_htotal, ushort, 0444);
++module_param(g_vsync_start, ushort, 0444);
++module_param(g_vsync_end, ushort, 0444);
++module_param(g_vtotal, ushort, 0444);
++
++// modprobe panel-sitronix-st7701 \
++//   g_hsync_start=550
++
+ static int st7701_get_modes(struct drm_panel *panel,
+ 			    struct drm_connector *connector)
+ {
+ 	struct st7701 *st7701 = panel_to_st7701(panel);
+-	const struct drm_display_mode *desc_mode = st7701->desc->mode;
++	struct drm_display_mode *desc_mode = st7701->desc->mode;
+ 	struct drm_display_mode *mode;
+
+ 	mode = drm_mode_duplicate(connector->dev, desc_mode);
+@@ -606,6 +646,14 @@ static int st7701_get_modes(struct drm_panel *panel,
+ 		return -ENOMEM;
+ 	}
+
++	// Hack this shit in
++	desc_mode->hsync_start  = g_hsync_start;
++	desc_mode->hsync_end    = g_hsync_end;
++	desc_mode->htotal       = g_htotal;
++	desc_mode->vsync_start  = g_vsync_start;
++	desc_mode->vsync_end    = g_vsync_end;
++	desc_mode->vtotal       = g_vtotal;
++
+ 	drm_mode_set_name(mode);
+ 	drm_mode_probed_add(connector, mode);
+
+@@ -637,6 +685,83 @@ static const struct drm_panel_funcs st7701_funcs = {
+ 	.get_orientation = st7701_get_orientation,
+ };
+
++static struct drm_display_mode tft34_485_mode = {
++	.clock		= 20000,
++
++	.hdisplay   = 480,
++	.hsync_start= 520,
++	.hsync_end  = 580,
++	.htotal     = 597,
++
++	.vdisplay   = 480,
++	.vsync_start= 520,
++	.vsync_end  = 580,
++	.vtotal     = 597,
++
++	.width_mm	= 60,
++	.height_mm	= 60,
++
++	.type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED,
++};
++
++static struct st7701_panel_desc tft34_485_desc = {
++	.mode = &tft34_485_mode,
++	.lanes = 2,
++	.format = MIPI_DSI_FMT_RGB888,
++	.panel_sleep_delay = 120,
++
++	.pv_gamma = {
++        0x40,
++        0x0E,
++        0x58,
++        0x0E,
++        0x12,
++        0x08,
++        0x0C,
++        0x09,
++        0x09,
++        0x27,
++        0x07,
++        0x18,
++        0x15,
++        0x78,
++        0x26,
++        0xC7
++	},
++	.nv_gamma = {
++        0x40,
++        0x13,
++        0x5B,
++        0x0D,
++        0x11,
++        0x06,
++        0x0A,
++        0x08,
++        0x08,
++        0x26,
++        0x03,
++        0x13,
++        0x12,
++        0x79,
++        0x28,
++        0xC9
++	},
++	.nlinv = 7,
++	.vop_uv = 4900000,
++	.vcom_uv = 800000,
++	.vgh_mv = 15000,
++	.vgl_mv = -12200,
++	.avdd_mv = 6200,
++	.avcl_mv = -4400,
++	.gamma_op_bias = OP_BIAS_MIDDLE,
++	.input_op_bias = OP_BIAS_MIN,
++	.output_op_bias = OP_BIAS_MIN,
++	.t2d_ns = 1600,
++	.t3d_ns = 10400,
++	.eot_en = true,
++	.gip_sequence = tft34_485_gip_sequence,
++};
++
+ static const struct drm_display_mode ts8550b_mode = {
+ 	.clock		= 27500,
+
+@@ -1265,6 +1390,7 @@ static const struct of_device_id st7701_dsi_of_match[] = {
+ 	{ .compatible = "densitron,dmt028vghmcmi-1a", .data = &dmt028vghmcmi_1a_desc },
+ 	{ .compatible = "elida,kd50t048a", .data = &kd50t048a_desc },
+ 	{ .compatible = "techstar,ts8550b", .data = &ts8550b_desc },
++	{ .compatible = "displaymodule,tft34-485", .data = &tft34_485_desc },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(of, st7701_dsi_of_match);
