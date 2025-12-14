@@ -1,0 +1,13 @@
+[Unit]
+Description=Run Blackhat script on each boot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/bh_init start
+ExecStop=/usr/local/bin/bh_init stop
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target
