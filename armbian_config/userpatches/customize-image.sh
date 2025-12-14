@@ -48,4 +48,8 @@ ExecStart=
 ExecStart=-/sbin/agetty --autologin root --keep-baud 115200,38400,9600 %I \$TERM
 EOF
 
+echo bh > /etc/hostname
+echo 'FONT="Lat7-Terminus12x6.psf.gz"' >> /etc/default/console-setup
+
+
 echo "Customization complete."

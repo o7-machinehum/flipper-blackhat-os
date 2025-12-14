@@ -15,7 +15,7 @@ OVERLAY_PREFIX="sun8i-a33"
 
 # Kernel flavours to build
 KERNEL_TARGET="current,edge,legacy"
-KERNEL_TEST_TARGET="current"
+KERNEL_TEST_TARGET="edge"
 
 # --- Enable Raspberry-Pi-style dual partition layout ---
 

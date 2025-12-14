@@ -1,0 +1,219 @@
+diff --git a/arch/arm/boot/dts/allwinner/Makefile b/arch/arm/boot/dts/allwinner/Makefile
+index d799ad153b37..6f99fb0d785f 100644
+--- a/arch/arm/boot/dts/allwinner/Makefile
++++ b/arch/arm/boot/dts/allwinner/Makefile
+@@ -216,6 +216,7 @@ dtb-$(CONFIG_MACH_SUN8I) += \
+ 	sun8i-a33-olinuxino.dtb \
+ 	sun8i-a33-q8-tablet.dtb \
+ 	sun8i-a33-sinlinx-sina33.dtb \
++	sun8i-a33-flipper-blackhat.dtb \
+ 	sun8i-a33-vstar.dtb \
+ 	sun8i-a83t-allwinner-h8homlet-v2.dtb \
+ 	sun8i-a83t-bananapi-m3.dtb \
+diff --git a/arch/arm/boot/dts/allwinner/sun8i-a33-flipper-blackhat.dts b/arch/arm/boot/dts/allwinner/sun8i-a33-flipper-blackhat.dts
+new file mode 100644
+index 000000000000..d66fff6bb526
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/sun8i-a33-flipper-blackhat.dts
+@@ -0,0 +1,201 @@
++/dts-v1/;
++#include "sun8i-a33.dtsi"
++#include "sunxi-common-regulators.dtsi"
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/input/input.h>
++
++/ {
++    model = "Flipper Blackhat";
++    compatible = "allwinner,sun8i-a33";
++
++    backlight: backlight {
++        compatible = "pwm-backlight";
++        pwms = <&pwm 1 50000 0>;
++        brightness-levels = <0 10 20 30 40 50 60 70 80 90 100>;
++        default-brightness-level = <1>;
++        power-supply = <&reg_vcc3v3>;
++    };
++
++    aliases {
++        ethernet0 = &rtl8723ds;
++        serial0 = &uart0;
++    };
++
++    chosen {
++        stdout-path = "serial0:115200n8";
++    };
++
++    leds {
++        compatible = "gpio-leds";
++
++        led {
++            label = "blackhat:green:usr";
++            gpios = <&r_pio 0 2 GPIO_ACTIVE_HIGH>; /* PL2 */
++        };
++    };
++
++    wifi_pwrseq: wifi-pwrseq {
++        compatible = "mmc-pwrseq-simple";
++        reset-gpios = <&pio 6 12 GPIO_ACTIVE_LOW>; /* PG12 */
++    };
++};
++
++&pio {
++    pwm1_pin: pwm1-pin {
++        pins = "PH1";
++        function = "pwm1";
++    };
++};
++
++&codec {
++    status = "okay";
++};
++
++&dai {
++    status = "okay";
++};
++
++&reg_vcc3v3 {
++    status = "okay";
++};
++
++&mmc0 {
++    vmmc-supply = <&reg_vcc3v3>;
++    bus-width = <4>;
++    cd-gpios = <&pio 1 4 GPIO_ACTIVE_LOW>; /* PB4 */
++    status = "okay";
++};
++
++&mmc1 {
++    vmmc-supply = <&reg_vcc3v3>;
++    vqmmc-supply = <&reg_vcc3v3>;
++    bus-width = <4>;
++    mmc-pwrseq = <&wifi_pwrseq>;
++    pinctrl-0 = <&mmc1_pg_pins>;
++    pinctrl-names = "default";
++    status = "okay";
++    non-removable;
++    no-sd;
++    no-mmc;
++
++    rtl8723ds: wifi@1 {
++        compatible = "realtek,rtw_8723ds";
++        reg = <1>;
++    };
++};
++
++&uart1 {
++    uart-has-rtscts;
++    pinctrl-0 = <&uart1_pg_pins>, <&uart1_cts_rts_pg_pins>;
++    pinctrl-names = "default";
++    status = "okay";
++
++    bluetooth {
++        compatible = "realtek,rtl8723ds-bt";
++        device-wake-gpios = <&pio 6 11 GPIO_ACTIVE_HIGH>; /* PG11 */
++        enable-gpios = <&pio 7 0 GPIO_ACTIVE_HIGH>; /* PH0 */
++        host-wake-gpios = <&pio 6 13 GPIO_ACTIVE_HIGH>; /* PG13 */
++    };
++};
++
++&ohci0 {
++    status = "okay";
++};
++
++&sound {
++    /* Board level jack widgets */
++    simple-audio-card,widgets = "Microphone", "Microphone Jack",
++                    "Headphone", "Headphone Jack";
++    /* Board level routing. First 2 routes copied from SoC level */
++    simple-audio-card,routing =
++        "Left DAC", "DACL",
++        "Right DAC", "DACR",
++        "HP", "HPCOM",
++        "Headphone Jack", "HP",
++        "MIC1", "Microphone Jack",
++        "Microphone Jack", "MBIAS";
++    status = "okay";
++};
++
++&uart0 {
++    pinctrl-names = "default";
++    pinctrl-0 = <&uart0_pb_pins>;
++    status = "okay";
++};
++
++&usbphy {
++    usb0_vbus-supply = <&reg_vcc5v0>;
++    usb1_vbus-supply = <&reg_vcc5v0>;
++    status = "okay";
++};
++
++&usb_otg {
++    dr_mode = "host";
++    status = "okay";
++};
++
++&ehci0 {
++    status = "okay";
++};
++
++&pio {
++    vcc-pa-supply = <&reg_vcc3v3>;
++    vcc-pb-supply = <&reg_vcc3v3>;
++    vcc-pc-supply = <&reg_vcc3v3>;
++    vcc-pd-supply = <&reg_vcc3v3>;
++    vcc-pe-supply = <&reg_vcc3v3>;
++    vcc-pf-supply = <&reg_vcc3v3>;
++    vcc-pg-supply = <&reg_vcc3v3>;
++    vcc-ph-supply = <&reg_vcc3v3>;
++};
++
++&dphy {
++    status = "okay";
++};
++
++&drc0 {
++    status = "okay";
++};
++
++&tcon0 {
++    status = "okay";
++};
++
++&tcon0_out {
++    status = "okay";
++};
++
++&mali {
++    status = "okay";
++};
++
++&de {
++    status = "okay";
++};
++
++&be0 {
++    status = "okay";
++};
++
++&dsi {
++    vcc-dsi-supply = <&reg_vcc3v3>;
++    status = "okay";
++    panel: panel@0 {
++        status = "okay";
++        compatible = "displaymodule,tft34-485", "sitronix,st7701";
++        reg = <0>;
++        backlight = <&backlight>;
++        VCC-supply = <&reg_vcc3v3>;
++        IOVCC-supply = <&reg_vcc3v3>;
++        pinctrl-names = "default";
++        reset-gpios = <&pio 7 4 GPIO_ACTIVE_HIGH>; /* PH4 */
++        rotation = <90>;
++    };
++};
++
++&pwm {
++    pinctrl-names = "default";
++    pinctrl-0 = <&pwm1_pin>;
++    status = "okay";
++};
