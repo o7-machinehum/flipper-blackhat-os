@@ -13,6 +13,22 @@ cd ..
 rsync -av armbian_config/userpatches/ armbian/userpatches/
 rsync -av armbian_config/config/ armbian/config/
 
+# Copy over dotfiles
+DOTFILES="armbian_config/dotfiles"
+ROOTDIR="armbian/userpatches/overlay/root"
+mkdir -p armbian/userpatches/overlay/root/.config/i3/
+cp $DOTFILES/i3_config $ROOTDIR/.config/i3/config
+
+mkdir -p $ROOTDIR/.config/i3status/
+cp $DOTFILES/i3status_config $ROOTDIR/.config/i3status/config
+
+cp $DOTFILES/xinitrc $ROOTDIR/.xinitrc
+
+mkdir -p $ROOTDIR/.config/alacritty/
+cp $DOTFILES/alacritty.toml $ROOTDIR/.config/alacritty/
+
+cp armbian_config/kali.png $ROOTDIR/
+
 # Add kernel patches
 if [[ ${kver} == "edge" ]]; then
     cp patches/linux/0002-rtw88.patch armbian/userpatches/kernel/archive/sunxi-6.16/rtw88.patch
@@ -39,6 +55,13 @@ install -D rootfs_overlay/etc/init.d/S51bh_init armbian/userpatches/overlay/usr/
 # Add additional packages
 PKG_CONF="armbian/config/cli/trixie/main/packages.additional"
 echo usb-modeswitch >> $PKG_CONF
+echo xorg >> $PKG_CONF
+echo i3 >> $PKG_CONF
+echo feh >> $PKG_CONF
+echo vim >> $PKG_CONF
+echo alacritty >> $PKG_CONF
+echo picom >> $PKG_CONF
+
 
 cd armbian
 
