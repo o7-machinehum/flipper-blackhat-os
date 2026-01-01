@@ -52,8 +52,8 @@ echo bh > /etc/hostname
 echo 'FONT="Lat7-Terminus12x6.psf.gz"' >> /etc/default/console-setup
 
 ### Boot optimisation below
-systemctl disable --now armbian-ramlog.service
-systemctl disable --now keyboard-setup.service
+systemctl disable armbian-ramlog.service
+systemctl disable keyboard-setup.service
 
 ## Remove network manager requirement from systemd-user-sessions
 install -D -m 0644 /usr/lib/systemd/system/systemd-user-sessions.service \

@@ -1,5 +1,6 @@
 #!/bin/bash
 
 picom --backend=xrender &
+unclutter -idle 1 &
 xrandr --output DSI-1 --rotate inverted
 exec i3

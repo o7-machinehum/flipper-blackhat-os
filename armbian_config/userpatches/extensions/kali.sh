@@ -26,6 +26,6 @@ function pre_customize_image__install_kali_packages(){
 	display_alert "Updating package lists with Kali Linux repos" "${BOARD}:${RELEASE}-${BRANCH} :: ${EXTENSION}" "info"
 	do_with_retries 3 chroot_sdcard_apt_get_update
 
-	display_alert "Installing Top 10 Kali Linux tools" "${EXTENSION}" "info"
-	chroot_sdcard_apt_get_install kali-tools-top10
+	# display_alert "Installing Top 10 Kali Linux tools" "${EXTENSION}" "info"
+	# chroot_sdcard_apt_get_install kali-tools-top10
 }

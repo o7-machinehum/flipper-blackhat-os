@@ -61,18 +61,24 @@ echo feh >> $PKG_CONF
 echo vim >> $PKG_CONF
 echo alacritty >> $PKG_CONF
 echo picom >> $PKG_CONF
-
+echo dmenu >> $PKG_CONF
+echo nano >> $PKG_CONF
+echo nmap >> $PKG_CONF
+echo unclutter >> $PKG_CONF
 
 cd armbian
 
+# CLEAN_LEVEL=all \
+
 ./compile.sh build \
     BOARD=flipper-blackhat \
+    CLEAN_LEVEL=images,cache \
     BRANCH=${kver} \
     BUILD_MINIMAL=no \
     KERNEL_CONFIGURE=no \
     ENABLE_EXTENSIONS="kali" \
     KEEP_ORIGINAL_OS_RELEASE=yes \
-    RELEASE=forky
+    RELEASE=trixie
 
 echo ************ Built Image ************
 echo "sudo dd if=armbian/output/images/Armbian-unofficial_26.02.0-trunk_Flipper-blackhat_forky_edge_6.16.8-kali.img of=/dev/sdd bs=4M conv=fsync status=progress"
