@@ -19,3 +19,7 @@ style = "Regular"
 
 [window]
 opacity=0.85
+
+[[keyboard.bindings]]
+key = "F1"
+action = "ToggleViMode"
