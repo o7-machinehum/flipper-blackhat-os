@@ -16,7 +16,7 @@ rsync -av armbian_config/config/ armbian/config/
 # Copy over dotfiles
 DOTFILES="armbian_config/dotfiles"
 ROOTDIR="armbian/userpatches/overlay/root"
-mkdir -p armbian/userpatches/overlay/root/.config/i3/
+mkdir -p $ROOTDIR/.config/i3/
 cp $DOTFILES/i3_config $ROOTDIR/.config/i3/config
 
 mkdir -p $ROOTDIR/.config/i3status/
