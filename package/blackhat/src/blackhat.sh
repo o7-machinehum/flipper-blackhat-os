@@ -1,30 +1,39 @@
 #!/bin/bash
 set -m
-exec > >(tee /dev/tty1) 2>&1
-export PYTHONUNBUFFERED=1
 
-CONFIG_F=blackhat.conf
+# For Debugging
+# set -mxe
 
-if test -f $CONFIG_F; then
-    CONFIG_F="$PWD/$CONFIG_F"
-    LOG_F=blackhat.log
-elif test -f /mnt/$CONFIG_F; then
-    CONFIG_F=/mnt/$CONFIG_F
-    LOG_F=/mnt/blackhat.log
-elif test -f /etc/$CONFIG_F; then
-    CONFIG_F=/etc/$CONFIG_F
-    LOG_F=/var/log/blackhat.log
+# If we're not connect to the blackpants, echo
+# everything back to the screen
+USB_HUB=0424:2514
+blackpants=true
+if ! lsusb -d "$USB_HUB" >/dev/null 2>&1; then
+    exec > >(tee /dev/tty1) 2>&1
+    export PYTHONUNBUFFERED=1
+    blackpants=false
+fi
+
+armbian=false
+if grep -qi '^ID=debian' /etc/os-release; then
+    armbian=true
+fi
+
+config_f="/mnt/blackhat.conf"
+if [[ -f "${config_f}" ]]; then
+    log_f="/mnt/blackhat.log"
 else
     echo "Could not load conf file"
     exit
 fi
 
-source "$CONFIG_F"
-rm $LOG_F 2>/dev/null
+source "$config_f"
+rm -rf $log_f 2>/dev/null
 
 function print_help() {
     echo "Commands:"
     echo "usage: bh wifi connect wlan0"
+    echo "usage: bh wifi"
     echo "        bh set PASS 'my_wifi_password'"
     echo "  set"
     echo "    SSID              Set SSID of WiFi network to connect to"
@@ -60,23 +69,46 @@ function validate_wlan_nic() {
 }
 
 function connect_wifi() {
-    check "$1"
-
     if [ "$1" = "stop" ]; then
-        killall wpa_supplicant
+        killall wpa_supplicant || true
         INET_NIC=$(cat /run/inet_nic 2>/dev/null) || exit
         ip link set $INET_NIC down
+        nmcli radio wifi off 2>/dev/null
         rm /run/inet_nic
         echo "WiFi Disconnected"
         exit
     fi
 
+    check "$1"
     validate_wlan_nic "$1"
     INET_NIC=$1
     echo $INET_NIC > /run/inet_nic
     echo INET_NIC: $INET_NIC
-
     ip link set $INET_NIC up
+
+    if [[ "$armbian" == true ]]; then
+        if [[ "$blackpants" == true ]]; then
+            nmtui
+        else
+            connect_wifi_nm "$@"
+        fi
+    else
+        connect_wifi_wpa "$@"
+    fi
+}
+
+function connect_wifi_nm() {
+    nmcli radio wifi on
+    if [[ -z ${PASS:-} ]]; then
+        echo "No password, connecting to open network"
+        nmcli dev wifi connect "$SSID" ifname "$INET_NIC"
+    else
+        echo "Password set"
+        nmcli dev wifi connect "$SSID" password "$PASS" ifname "$INET_NIC"
+    fi
+}
+
+function connect_wifi_wpa() {
     if [[ -z ${PASS:-} ]]; then
         echo "No password, connecting to open network"
         wpa_supplicant -B -i "$INET_NIC" -c <(cat <<EOF
@@ -120,7 +152,7 @@ function start_ap() {
     hostapd /etc/hostapd.conf -i $AP_NIC &
 
     kill $(pidof dnsmasq) 2>/dev/null
-    dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F &
+    dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $log_f &
 }
 
 function get_5ghz_nic() {
@@ -167,7 +199,7 @@ function evil_portal() {
     cp /mnt/index.html /var/www/
 
     kill -9 $(pidof dnsmasq) 2>/dev/null
-    dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F &
+    dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $log_f &
 
     kill -9 $(pidof nginx) 2>/dev/null
     mkdir /var/log/nginx 2>/dev/null
@@ -179,11 +211,11 @@ function evil_portal() {
 }
 
 function set_param() {
-    sed -i "/^export $1=/cexport $1=\'$2\'" "$CONFIG_F"
+    sed -i "/^export $1=/cexport $1=\'$2\'" "$config_f"
 }
 
 function get_param() {
-    grep "export $1" "$CONFIG_F" | cut -d"'" -f2
+    grep "export $1" "$config_f" | cut -d"'" -f2
 }
 
 function check() {
