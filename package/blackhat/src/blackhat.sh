@@ -3,6 +3,8 @@ set -m
 
 # For Debugging
 # set -mxe
+# x: print everything
+# e: quit when anything fails
 
 # If we're not connect to the blackpants, echo
 # everything back to the screen
@@ -87,11 +89,7 @@ function connect_wifi() {
     ip link set $INET_NIC up
 
     if [[ "$armbian" == true ]]; then
-        if [[ "$blackpants" == true ]]; then
-            nmtui
-        else
-            connect_wifi_nm "$@"
-        fi
+        connect_wifi_nm "$@"
     else
         connect_wifi_wpa "$@"
     fi
@@ -126,15 +124,24 @@ EOF
 
 function start_ap() {
     check "$1"
-
     if [ "$1" = "stop" ]; then
-        killall hostapd
         AP_NIC=$(cat /run/ap_nic 2>/dev/null) || exit
-        ip link set $AP_NIC down
-        ip addr flush $AP_NIC
+        if [[ "$armbian" == true ]]; then
+            systemctl stop hostapd
+        else
+            killall hostapd
+            ip link set "$AP_NIC" down
+            ip addr flush "$AP_NIC"
+        fi
+
         rm /run/ap_nic
-        echo "AP Stopped"
+        echo "$AP_NIC AP Stopped"
         exit
+    fi
+
+    hostapd_conf="/etc/hostapd.conf"
+    if [[ "$armbian" == true ]]; then
+        hostapd_conf="/etc/hostapd/hostapd.conf"
     fi
 
     validate_wlan_nic "$1"
@@ -145,14 +152,25 @@ function start_ap() {
     ip link set $AP_NIC down
     ip addr add $AP_IP/24 dev $AP_NIC
 
-    sed -i "s/^ssid=.*/ssid=$AP_SSID/" /etc/hostapd.conf
-    sed -i "s/^interface=.*/interface=$AP_NIC/" /etc/dnsmasq.conf
+    sed -i '/^[[:space:]]*#*[[:space:]]*interface[[:space:]]*=/d' /etc/dnsmasq.conf
+    echo "interface=$AP_NIC" >> /etc/dnsmasq.conf
 
-    kill $(pidof hostapd) 2>/dev/null
-    hostapd /etc/hostapd.conf -i $AP_NIC &
+    sed -i '/^[[:space:]]*#*[[:space:]]*ssid[[:space:]]*=/d' "$hostapd_conf"
+    echo "ssid=$AP_SSID" >> "$hostapd_conf"
 
-    kill $(pidof dnsmasq) 2>/dev/null
-    dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $log_f &
+    sed -i '/^[[:space:]]*#*[[:space:]]*interface[[:space:]]*=/d' "$hostapd_conf"
+    echo "interface=$AP_NIC" >> "$hostapd_conf"
+
+    if [[ "$armbian" == true ]]; then
+        systemctl restart hostapd
+        systemctl restart dnsmasq
+    else
+        kill $(pidof hostapd) 2>/dev/null
+        hostapd /etc/hostapd.conf -i $AP_NIC &
+
+        kill $(pidof dnsmasq) 2>/dev/null
+        dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $log_f &
+    fi
 }
 
 function get_5ghz_nic() {
@@ -182,9 +200,14 @@ function evil_twin() {
     nft add rule ip filter forward iifname "$AP_NIC" accept
 }
 
-function evil_portal() {
-    if [ "$1" = "stop" ]; then
-        killall nginx
+function start_evil_portal() {
+    if [[ "$1" == "stop" ]]; then
+        if [[ "$armbian" == false ]]; then
+            killall nginx
+        else
+            sudo systemctl stop nginx
+        fi
+
         killall evil_portal
         echo "Evil Portal Stopped"
         exit
@@ -198,16 +221,22 @@ function evil_portal() {
     nft add rule ip nat postrouting oif $INET_NIC ip saddr @allowed_ips masquerade
     cp /mnt/index.html /var/www/
 
-    kill -9 $(pidof dnsmasq) 2>/dev/null
-    dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $log_f &
+    if [[ "$armbian" == true ]]; then
+        sudo systemctl restart dnsmasq
+        sudo systemctl restart nginx
+    else
+        kill -9 $(pidof dnsmasq) 2>/dev/null
+        dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $log_f &
 
-    kill -9 $(pidof nginx) 2>/dev/null
-    mkdir /var/log/nginx 2>/dev/null
-    nginx &
+        kill -9 $(pidof nginx) 2>/dev/null
+        mkdir /var/log/nginx 2>/dev/null
+        nginx &
+    fi
 
-    kill -9 $(pidof evil_portal) 2>/dev/null
+    killall -q evil_portal
     ip link set lo up
-    /usr/bin/evil_portal &
+
+    evil_portal &
 }
 
 function set_param() {
@@ -506,7 +535,7 @@ case "$subcommand" in
         evil_twin "$@"
         ;;
     evil_portal)
-        evil_portal "$@"
+        start_evil_portal "$@"
         ;;
     kismet)
         bh_kismet "$@"

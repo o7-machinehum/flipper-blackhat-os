@@ -18,6 +18,16 @@ fi
 
 systemctl enable bh-boot
 
+# These are started manually
+systemctl disable nginx
+
+systemctl disable hostapd
+systemctl unmask hostapd
+
+systemctl unmask dnsmasq
+systemctl disable dnsmasq
+
+
 # Force Realtek dongles to _not_ come up as USB MSD
 # https://linux.die.net/man/1/usb_modeswitch
 echo 'ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0bda", ATTR{idProduct}=="1a2b", ATTR{bConfigurationValue}!="1", ATTR{bConfigurationValue}="1"' \
@@ -54,5 +64,8 @@ sed -i 's/network\.target[[:space:]]//g' /etc/systemd/system/systemd-user-sessio
 
 # Alias python -> python3
 ln -sf /usr/bin/python3 /usr/bin/python
+
+# Use old wlanX names
+echo "extraargs=net.ifnames=0 biosdevname=0" >> /boot/armbianEnv.txt
 
 echo "Customization complete."
