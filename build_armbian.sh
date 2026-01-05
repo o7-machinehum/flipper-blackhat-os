@@ -63,7 +63,7 @@ cp rootfs_overlay/etc/dnsmasq.conf "$armbian_rootfs"/etc/
 cp rootfs_overlay/etc/ep-rules.nft "$armbian_rootfs"/etc/
 
 mkdir -p "$armbian_rootfs"/var/www/
-cp rootfs_overlay/var/www/index.html "$armbian_rootfs"/var/www/
+cp rootfs_overlay/var/www/index.html "$armbian_rootfs"/boot/bh/
 
 cp package/blackhat/src/evil_portal.py "$armbian_rootfs"/usr/local/bin/evil_portal
 

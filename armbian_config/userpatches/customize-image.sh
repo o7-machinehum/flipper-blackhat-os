@@ -65,6 +65,9 @@ sed -i 's/network\.target[[:space:]]//g' /etc/systemd/system/systemd-user-sessio
 # Alias python -> python3
 ln -sf /usr/bin/python3 /usr/bin/python
 
+# This is something that makes the terminal more fancy (remove it)
+rm /etc/profile.d/80-systemd-osc-context.sh
+
 # Use old wlanX names
 echo "extraargs=net.ifnames=0 biosdevname=0" >> /boot/armbianEnv.txt
 
