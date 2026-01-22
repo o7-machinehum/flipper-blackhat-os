@@ -71,4 +71,8 @@ rm /etc/profile.d/80-systemd-osc-context.sh
 # Use old wlanX names
 echo "extraargs=net.ifnames=0 biosdevname=0" >> /boot/armbianEnv.txt
 
+# Bjorn requirements
+pip install smbprotocol --break-system-packages
+pip install pysmb --break-system-packages
+
 echo "Customization complete."

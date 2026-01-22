@@ -45,7 +45,7 @@ armbian_rootfs="armbian/userpatches/overlay/"
 
 # Install packages needed for bh scripts
 install -D package/blackhat/src/blackhat.sh "$armbian_rootfs"/usr/local/bin/bh
-# install -D package/blackhat/src/telegram.py armbian/userpatches/overlay/usr/local/bin/
+cp -r package/bjorn/bjorn "$armbian_rootfs"/root/
 install -D -m 0644 package/blackhat/src/blackhat.conf "$armbian_rootfs"/boot/bh/blackhat.conf
 
 mkdir -p armbian/userpatches/overlay/boot/bh/scripts
@@ -88,6 +88,21 @@ echo python3-requests >> $PKG_CONF
 echo hostapd >> $PKG_CONF
 echo dnsmasq >> $PKG_CONF
 echo nftables >> $PKG_CONF
+
+# Bjorn requirements
+echo python3-pandas >> $PKG_CONF
+echo python3-pil >> $PKG_CONF
+echo python3-numpy >> $PKG_CONF
+echo python3-rich >> $PKG_CONF
+echo python3-netifaces >> $PKG_CONF
+echo python3-ping3 >> $PKG_CONF
+echo python3-getmac >> $PKG_CONF
+echo python3-paramiko >> $PKG_CONF
+echo python3-pymysql >> $PKG_CONF
+echo python3-sqlalchemy >> $PKG_CONF
+echo python3-nmap >> $PKG_CONF
+echo python3-pip >> $PKG_CONF
+echo python3-legacy-cgi >> $PKG_CONF
 
 cd armbian
 
