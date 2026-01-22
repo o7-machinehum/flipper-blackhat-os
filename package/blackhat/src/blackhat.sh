@@ -119,7 +119,7 @@ connect_wifi() {
     check "$1"
     validate_wlan_nic "$1"
     INET_NIC=$1
-    echo INET_NIC: $INET_NIC
+    echo Connecting with: $INET_NIC
     ip link set $INET_NIC up
 
     if [[ "$armbian" == true ]]; then
@@ -136,13 +136,19 @@ connect_wifi() {
 connect_wifi_nm() {
     INET_NIC=$1
     nmcli radio wifi on
-    nmcli con delete "$SSID"
     if [[ -z ${PASS:-} ]]; then
-        echo "No password, connecting to open network"
-        nmcli dev wifi connect "$SSID" ifname "$INET_NIC"
+        out="$(nmcli dev wifi connect "$SSID" ifname "$INET_NIC" 2>&1)"
+        rc=$?
+        echo "$out" | grep -v "property is missing"
     else
-        echo "Password set"
-        nmcli dev wifi connect "$SSID" password "$PASS" ifname "$INET_NIC"
+        out="$(nmcli dev wifi connect "$SSID" password "$PASS" \
+            ifname "$INET_NIC" 2>&1)"
+        rc=$?
+        echo "$out" | grep -v "property is missing"
+    fi
+
+    if [[ $rc -eq 0 ]]; then
+        echo $INET_NIC Connected!
     fi
 }
 
