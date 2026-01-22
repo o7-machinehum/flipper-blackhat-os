@@ -18,7 +18,7 @@ def bash(cmd, sudo=False, suppress_output=False):
 
 if __name__ == "__main__":
     TARGET_DISK = "/dev/sda1"     # Name of disk we're robbing
-    LOOT_DISK = "/dev/mmcblk0p3"  # Out disk
+    LOOT_DISK = "/dev/mmcblk0p2"  # Out disk
     LOOT_MOUNT_POINT = "/media/loot"
     TARGET_MOUNT_POINT = "/media/target"
 
