@@ -389,22 +389,27 @@ bh_kismet() {
     check "$1"
 
     if [ "$1" = "stop" ]; then
-        killall kismet
-        KISMET_NIC=$(cat /run/kismet_nic 2>/dev/null) || exit
-        rm /run/kismet_nic
+        systemctl stop kismet
         echo "Kismet Stopped"
-        exit
+        return 0
     fi
 
     validate_wlan_nic "$1"
     KISMET_NIC=$1
-    echo $KISMET_NIC > /run/kismet_nic
     echo KISMET_NIC: $KISMET_NIC
 
-    kismet -s \
-        -c "$KISMET_NIC:channelhop=true,channels=\"36,40,44,48,149,153,157,161,165\"" \
-        > /dev/null &
-    echo "Kismet running on Port 2501"
+    mkdir -p /etc/systemd/system/kismet.service.d
+    printf '%s\n' \
+      '[Service]' \
+      "Environment=KISMET_NIC=${KISMET_NIC}" \
+      'ExecStart=' \
+      'ExecStart=/usr/bin/kismet --no-ncurses-wrapper --source=${KISMET_NIC}' \
+      > /etc/systemd/system/kismet.service.d/override.conf
+
+    systemctl start kismet
+    systemctl daemon-reload
+    systemctl restart kismet
+    echo "Kismet running. Port: 2501"
 }
 
 ssh() {

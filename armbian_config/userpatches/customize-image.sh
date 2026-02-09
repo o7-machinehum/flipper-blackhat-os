@@ -27,6 +27,8 @@ systemctl unmask hostapd
 systemctl unmask dnsmasq
 systemctl disable dnsmasq
 
+systemctl unmask kismet
+systemctl disable kismet
 
 # Force Realtek dongles to _not_ come up as USB MSD
 # https://linux.die.net/man/1/usb_modeswitch
