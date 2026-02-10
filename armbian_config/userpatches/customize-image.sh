@@ -77,4 +77,7 @@ echo "extraargs=net.ifnames=0 biosdevname=0" >> /boot/armbianEnv.txt
 pip install smbprotocol --break-system-packages
 pip install pysmb --break-system-packages
 
+cd /root/bhtui
+sudo make install
+
 echo "Customization complete."

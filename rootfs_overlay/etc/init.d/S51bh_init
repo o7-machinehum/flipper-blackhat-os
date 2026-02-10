@@ -17,11 +17,11 @@ start() {
     # Else its the old Buildroot Build
     else
         # Turn on LED / Probe screen drivers
-        echo 1 > /sys/devices/platform/leds/leds/blackhat:green:usr/brightness
         modprobe pwm_bl
         modprobe panel_sitronix_st7701
     fi
 
+    echo 1 > /sys/devices/platform/leds/leds/blackhat:green:usr/brightness
     echo "Welcome to BlackhatOS."
 }
 

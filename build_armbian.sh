@@ -49,6 +49,9 @@ mkdir -p "$armbian_rootfs"/root/bjorn
 cp -r package/bjorn/bjorn/* "$armbian_rootfs"/root/bjorn/
 install -D -m 0644 package/blackhat/src/blackhat.conf "$armbian_rootfs"/boot/bh/blackhat.conf
 
+# Copy build files over for bhtui
+cp -r package/bhtui "$armbian_rootfs"/root/
+
 mkdir -p armbian/userpatches/overlay/boot/bh/scripts
 cp -a package/blackhat/scripts/. "$armbian_rootfs"/boot/bh/scripts/
 
@@ -89,6 +92,11 @@ echo python3-requests >> $PKG_CONF
 echo hostapd >> $PKG_CONF
 echo dnsmasq >> $PKG_CONF
 echo nftables >> $PKG_CONF
+echo chocolate-doom >> $PKG_CONF
+echo doom-wad-shareware >> $PKG_CONF
+echo cmake >> $PKG_CONF
+echo libicu-dev >> $PKG_CONF
+echo libicu-dev >> $PKG_CONF
 
 # Bjorn requirements
 echo python3-pandas >> $PKG_CONF
@@ -108,10 +116,12 @@ echo python3-legacy-cgi >> $PKG_CONF
 cd armbian
 
 # CLEAN_LEVEL=all \
+# CLEAN_LEVEL=images,cache \
+# ./compile.sh docker-purge # <- This might be required
+# ./compile.sh docker-shell # <- Get a shell
 
 ./compile.sh build \
     BOARD=flipper-blackhat \
-    CLEAN_LEVEL=images,cache \
     BRANCH=${kver} \
     BUILD_MINIMAL=no \
     KERNEL_CONFIGURE=no \
