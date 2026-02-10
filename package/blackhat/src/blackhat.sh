@@ -1,30 +1,41 @@
 #!/bin/bash
 set -m
-exec > >(tee /dev/tty1) 2>&1
-export PYTHONUNBUFFERED=1
 
-CONFIG_F=blackhat.conf
+# For Debugging
+# set -mxe
+# x: print everything
+# e: quit when anything fails
 
-if test -f $CONFIG_F; then
-    CONFIG_F="$PWD/$CONFIG_F"
-    LOG_F=blackhat.log
-elif test -f /mnt/$CONFIG_F; then
-    CONFIG_F=/mnt/$CONFIG_F
-    LOG_F=/mnt/blackhat.log
-elif test -f /etc/$CONFIG_F; then
-    CONFIG_F=/etc/$CONFIG_F
-    LOG_F=/var/log/blackhat.log
+# If we're not connect to the blackpants, echo
+# everything back to the screen
+USB_HUB=0424:2514
+blackpants=true
+if ! lsusb -d "$USB_HUB" >/dev/null 2>&1; then
+    exec > >(tee /dev/tty1) 2>&1
+    export PYTHONUNBUFFERED=1
+    blackpants=false
+fi
+
+armbian=false
+if grep -qi '^ID=debian' /etc/os-release; then
+    armbian=true
+fi
+
+config_f="/mnt/blackhat.conf"
+if [[ -f "${config_f}" ]]; then
+    log_f="/mnt/blackhat.log"
 else
     echo "Could not load conf file"
     exit
 fi
 
-source "$CONFIG_F"
-rm $LOG_F 2>/dev/null
+source "$config_f"
+rm -rf $log_f 2>/dev/null
 
-function print_help() {
+print_help() {
     echo "Commands:"
     echo "usage: bh wifi connect wlan0"
+    echo "usage: bh wifi"
     echo "        bh set PASS 'my_wifi_password'"
     echo "  set"
     echo "    SSID              Set SSID of WiFi network to connect to"
@@ -51,7 +62,42 @@ function print_help() {
     echo "    run <script>"
 }
 
-function validate_wlan_nic() {
+wlan_has_internet() {
+    local ifc type
+
+    # for ifc in wlan0 wlan1 wlan2; do
+    for ifc in /sys/class/net/wlan*; do
+        [[ -e "$ifc" ]] || continue
+        ifc="${ifc##*/}"
+
+        ip link show dev "$ifc" 2>/dev/null | grep -q "state UP" || continue
+        ip -4 addr show dev "$ifc" | grep -q "inet " || continue
+        ip -4 route show default dev "$ifc" | grep -q '^default ' || continue
+
+        if ping -I "$ifc" -c 1 -W 1 1.1.1.1 >/dev/null 2>&1; then
+            printf '%s\n' "$ifc"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+wlan_hostapd_ap_nic() {
+    local ifc
+
+    # Pull the most recent "wlanX: AP-ENABLED" from this boot
+    ifc="$(
+        journalctl -b -u hostapd --no-pager 2>/dev/null \
+            | sed -n 's/.*\b\(wlan[0-9]\+\): AP-ENABLED.*/\1/p' \
+            | tail -n 1
+    )"
+
+    [[ -n "$ifc" ]] || return 1
+    printf '%s\n' "$ifc"
+}
+
+validate_wlan_nic() {
     nic=$(bh wifi dev | grep "$1" | awk '{print $1}' | grep wlan | head -n1)
     if [ "$nic" != "$1" ]; then
         echo "Invalid wlan device!"
@@ -59,24 +105,54 @@ function validate_wlan_nic() {
     fi
 }
 
-function connect_wifi() {
-    check "$1"
-
+connect_wifi() {
     if [ "$1" = "stop" ]; then
-        killall wpa_supplicant
-        INET_NIC=$(cat /run/inet_nic 2>/dev/null) || exit
+        killall wpa_supplicant || true
+        INET_NIC=$(wlan_has_internet) || exit
         ip link set $INET_NIC down
+        nmcli radio wifi off 2>/dev/null
         rm /run/inet_nic
         echo "WiFi Disconnected"
         exit
     fi
 
+    check "$1"
     validate_wlan_nic "$1"
     INET_NIC=$1
-    echo $INET_NIC > /run/inet_nic
-    echo INET_NIC: $INET_NIC
-
+    echo Connecting with: $INET_NIC
     ip link set $INET_NIC up
+
+    if [[ "$armbian" == true ]]; then
+        if [[ "$blackpants" == true ]]; then
+            nmtui
+        else
+            connect_wifi_nm "$@"
+        fi
+    else
+        connect_wifi_wpa "$@"
+    fi
+}
+
+connect_wifi_nm() {
+    INET_NIC=$1
+    nmcli radio wifi on
+    if [[ -z ${PASS:-} ]]; then
+        out="$(nmcli dev wifi connect "$SSID" ifname "$INET_NIC" 2>&1)"
+        rc=$?
+        echo "$out" | grep -v "property is missing"
+    else
+        out="$(nmcli dev wifi connect "$SSID" password "$PASS" \
+            ifname "$INET_NIC" 2>&1)"
+        rc=$?
+        echo "$out" | grep -v "property is missing"
+    fi
+
+    if [[ $rc -eq 0 ]]; then
+        echo $INET_NIC Connected!
+    fi
+}
+
+connect_wifi_wpa() {
     if [[ -z ${PASS:-} ]]; then
         echo "No password, connecting to open network"
         wpa_supplicant -B -i "$INET_NIC" -c <(cat <<EOF
@@ -92,48 +168,76 @@ EOF
     fi
 }
 
-function start_ap() {
+start_ap() {
     check "$1"
-
     if [ "$1" = "stop" ]; then
-        killall hostapd
-        AP_NIC=$(cat /run/ap_nic 2>/dev/null) || exit
-        ip link set $AP_NIC down
-        ip addr flush $AP_NIC
-        rm /run/ap_nic
-        echo "AP Stopped"
+        AP_NIC=$(wlan_hostapd_ap_nic) || exit
+        if [[ "$armbian" == true ]]; then
+            systemctl stop hostapd
+        else
+            killall hostapd
+            ip link set "$AP_NIC" down
+            ip addr flush "$AP_NIC"
+        fi
+
+        echo "$AP_NIC AP Stopped"
         exit
+    fi
+
+    hostapd_conf="/etc/hostapd.conf"
+    if [[ "$armbian" == true ]]; then
+        hostapd_conf="/etc/hostapd/hostapd.conf"
     fi
 
     validate_wlan_nic "$1"
     AP_NIC=$1
-    echo $AP_NIC > /run/ap_nic
     echo AP_NIC: $AP_NIC
 
     ip link set $AP_NIC down
     ip addr add $AP_IP/24 dev $AP_NIC
 
-    sed -i "s/^ssid=.*/ssid=$AP_SSID/" /etc/hostapd.conf
-    sed -i "s/^interface=.*/interface=$AP_NIC/" /etc/dnsmasq.conf
+    sed -i '/^[[:space:]]*#*[[:space:]]*interface[[:space:]]*=/d' /etc/dnsmasq.conf
+    echo "interface=$AP_NIC" >> /etc/dnsmasq.conf
 
-    kill $(pidof hostapd) 2>/dev/null
-    hostapd /etc/hostapd.conf -i $AP_NIC &
+    sed -i '/^[[:space:]]*#*[[:space:]]*ssid[[:space:]]*=/d' "$hostapd_conf"
+    echo "ssid=$AP_SSID" >> "$hostapd_conf"
 
-    kill $(pidof dnsmasq) 2>/dev/null
-    dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F &
+    sed -i '/^[[:space:]]*#*[[:space:]]*interface[[:space:]]*=/d' "$hostapd_conf"
+    echo "interface=$AP_NIC" >> "$hostapd_conf"
+
+    if [[ "$armbian" == true ]]; then
+        systemctl restart hostapd
+        systemctl restart dnsmasq
+    else
+        kill $(pidof hostapd) 2>/dev/null
+        hostapd /etc/hostapd.conf -i $AP_NIC &
+
+        kill $(pidof dnsmasq) 2>/dev/null
+        dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $log_f &
+    fi
 }
 
-function get_5ghz_nic() {
+get_5ghz_nic() {
     bh wifi dev | grep "5GHz" | awk '{print $1}' | grep wlan | head -n1
 }
 
-function get_2_4ghz_nic() {
+get_2_4ghz_nic() {
     bh wifi dev | grep -v "5GHz" | awk '{print $1}' | grep wlan | head -n1
 }
 
-function evil_twin() {
-    INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { connect_wifi $(get_2_4ghz_nic); INET_NIC=$(cat /run/inet_nic); }
-    AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { start_ap $(get_5ghz_nic); AP_NIC=$(cat /run/ap_nic); }
+evil_twin() {
+    AP_NIC=$(wlan_hostapd_ap_nic) || {
+        echo "Enable AP First."
+        return 1
+    }
+
+    INET_NIC=$(wlan_has_internet) || {
+        echo "Connect to internet first."
+        return 1
+    }
+
+    echo "$AP_NIC -> AP, $INET_NIC -> Inet nic."
+    echo "Starting Evil Twin"
 
     # Enable IP forwarding
     echo 1 > /proc/sys/net/ipv4/ip_forward
@@ -150,50 +254,71 @@ function evil_twin() {
     nft add rule ip filter forward iifname "$AP_NIC" accept
 }
 
-function evil_portal() {
-    if [ "$1" = "stop" ]; then
-        killall nginx
+start_evil_portal() {
+    if [[ "$1" == "stop" ]]; then
+        if [[ "$armbian" == false ]]; then
+            killall nginx
+        else
+            sudo systemctl stop nginx
+        fi
+
         killall evil_portal
         echo "Evil Portal Stopped"
         exit
     fi
 
-    INET_NIC=$(cat /run/inet_nic 2>/dev/null) || { connect_wifi $(get_2_4ghz_nic); INET_NIC=$(cat /run/inet_nic); }
-    AP_NIC=$(cat /run/ap_nic 2>/dev/null) || { start_ap $(get_5ghz_nic); AP_NIC=$(cat /run/ap_nic); }
+    AP_NIC=$(wlan_hostapd_ap_nic) || {
+        echo "Enable AP First."
+        return 1
+    }
+
+    INET_NIC=$(wlan_has_internet) || {
+        echo "Connect to internet first."
+        return 1
+    }
+
+    echo "$AP_NIC -> AP, $INET_NIC -> Inet nic."
+    echo "Starting Evil Portal"
 
     echo 1 > /proc/sys/net/ipv4/ip_forward
     nft -f /etc/ep-rules.nft
     nft add rule ip nat postrouting oif $INET_NIC ip saddr @allowed_ips masquerade
     cp /mnt/index.html /var/www/
 
-    kill -9 $(pidof dnsmasq) 2>/dev/null
-    dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $LOG_F &
+    if [[ "$armbian" == true ]]; then
+        sudo systemctl restart dnsmasq
+        sudo systemctl restart nginx
+    else
+        kill -9 $(pidof dnsmasq) 2>/dev/null
+        dnsmasq -C /etc/dnsmasq.conf -d 2>&1 > $log_f &
 
-    kill -9 $(pidof nginx) 2>/dev/null
-    mkdir /var/log/nginx 2>/dev/null
-    nginx &
+        kill -9 $(pidof nginx) 2>/dev/null
+        mkdir /var/log/nginx 2>/dev/null
+        nginx &
+    fi
 
-    kill -9 $(pidof evil_portal) 2>/dev/null
+    killall -q evil_portal
     ip link set lo up
-    /usr/bin/evil_portal &
+
+    evil_portal &
 }
 
-function set_param() {
-    sed -i "/^export $1=/cexport $1=\'$2\'" "$CONFIG_F"
+set_param() {
+    sed -i "/^export $1=/cexport $1=\'$2\'" "$config_f"
 }
 
-function get_param() {
-    grep "export $1" "$CONFIG_F" | cut -d"'" -f2
+get_param() {
+    grep "export $1" "$config_f" | cut -d"'" -f2
 }
 
-function check() {
+check() {
     if [ -z "$1" ]; then
         print_help
         exit
     fi
 }
 
-function wifi() {
+wifi() {
     subcommand="$1"; shift
     case "$subcommand" in
         list)
@@ -246,7 +371,7 @@ function wifi() {
 }
 
 
-function script() {
+script() {
     subcommand="$1"; shift
     case "$subcommand" in
         scan)
@@ -260,29 +385,34 @@ function script() {
     esac
 }
 
-function bh_kismet() {
+bh_kismet() {
     check "$1"
 
     if [ "$1" = "stop" ]; then
-        killall kismet
-        KISMET_NIC=$(cat /run/kismet_nic 2>/dev/null) || exit
-        rm /run/kismet_nic
+        systemctl stop kismet
         echo "Kismet Stopped"
-        exit
+        return 0
     fi
 
     validate_wlan_nic "$1"
     KISMET_NIC=$1
-    echo $KISMET_NIC > /run/kismet_nic
     echo KISMET_NIC: $KISMET_NIC
 
-    kismet -s \
-        -c "$KISMET_NIC:channelhop=true,channels=\"36,40,44,48,149,153,157,161,165\"" \
-        > /dev/null &
-    echo "Kismet running on Port 2501"
+    mkdir -p /etc/systemd/system/kismet.service.d
+    printf '%s\n' \
+      '[Service]' \
+      "Environment=KISMET_NIC=${KISMET_NIC}" \
+      'ExecStart=' \
+      'ExecStart=/usr/bin/kismet --no-ncurses-wrapper --source=${KISMET_NIC}' \
+      > /etc/systemd/system/kismet.service.d/override.conf
+
+    systemctl start kismet
+    systemctl daemon-reload
+    systemctl restart kismet
+    echo "Kismet running. Port: 2501"
 }
 
-function ssh() {
+ssh() {
     if [ "$1" = "stop" ]; then
         killall dropbear
         echo "SSH Server Stopped"
@@ -295,7 +425,7 @@ function ssh() {
     bh wifi ip
 }
 
-function setup_monitor_mode() {
+setup_monitor_mode() {
     local iface=$1
     echo "Setting up monitor mode on $iface..."
 
@@ -313,7 +443,7 @@ function setup_monitor_mode() {
     return 0
 }
 
-function deauth_scan() {
+deauth_scan() {
     local iface="${1:-wlan1}"
 
     echo "Setting up monitor mode on $iface for scanning..."
@@ -357,7 +487,7 @@ function deauth_scan() {
     rm -f /tmp/deauth_targets* 2>/dev/null
 }
 
-function deauth_attack() {
+deauth_attack() {
     local client_mac="$1"
     local ap_mac="$2"
     local iface="${3:-wlan1}"
@@ -387,7 +517,7 @@ function deauth_attack() {
     echo "Deauth attack completed"
 }
 
-function deauth_all() {
+deauth_all() {
     local ap_mac="$1"
     local iface="${2:-wlan1}"
     local count="${3:-10}"
@@ -415,7 +545,7 @@ function deauth_all() {
     echo "Deauth all attack completed"
 }
 
-function deauth_broadcast() {
+deauth_broadcast() {
     local iface="${1:-wlan1}"
     local count="${2:-5}"
 
@@ -456,6 +586,7 @@ function deauth_broadcast() {
     rm -f /tmp/deauth_broadcast* 2>/dev/null
 }
 
+## Main
 subcommand="$1"; shift
 case "$subcommand" in
     set)
@@ -474,7 +605,7 @@ case "$subcommand" in
         evil_twin "$@"
         ;;
     evil_portal)
-        evil_portal "$@"
+        start_evil_portal "$@"
         ;;
     kismet)
         bh_kismet "$@"

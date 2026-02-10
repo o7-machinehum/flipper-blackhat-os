@@ -1,31 +1,32 @@
-#!/bin/sh
+#!/bin/bash
 
 start() {
-    TARGET=0424:2514
-    if lsusb -d "$TARGET" >/dev/null 2>&1; then
-        # If Blackpants
-        echo 2 > /sys/class/graphics/fbcon/rotate
+    # If Armbian Build
+    if grep -qi '^ID=debian' /etc/os-release; then
         mount --bind /boot/bh /mnt/
+        USB_HUB=0424:2514
+        # If Blackpants (USB Hub exists)
+        if lsusb -d "$USB_HUB" >/dev/null 2>&1; then
+            echo "Connect to Blackpants"
+            echo 2 > /sys/class/graphics/fbcon/rotate
+        # Else Flipper (No Hub)
+        else
+            echo "Connect to Flipper Zero"
+        fi
+        source /mnt/blackhat.conf
+    # Else its the old Buildroot Build
     else
-        # Else Flipper
-        echo 1 > /sys/devices/platform/leds/leds/blackhat:green:usr/brightness
+        # Turn on LED / Probe screen drivers
         modprobe pwm_bl
         modprobe panel_sitronix_st7701
     fi
-    source /mnt/blackhat.conf
+
+    echo 1 > /sys/devices/platform/leds/leds/blackhat:green:usr/brightness
     echo "Welcome to BlackhatOS."
 }
 
 stop() {
-    TARGET=0424:2514
-    if lsusb -d "$TARGET" >/dev/null 2>&1; then
-        echo 2 > /sys/class/graphics/fbcon/rotate
-        umount /mnt/
-    else
-        echo 0 > /sys/devices/platform/leds/leds/blackhat:green:usr/brightness
-        rmmod pwm_bl
-        rmmod panel_sitronix_st7701
-    fi
+    echo "Stopping"
 }
 
 case "$1" in

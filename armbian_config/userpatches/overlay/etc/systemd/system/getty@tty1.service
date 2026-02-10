@@ -1,0 +1,27 @@
+# Write an explicit tty1 unit that does NOT reference rc-local
+
+[Unit]
+Description=Getty on tty1
+Documentation=man:agetty(8) man:systemd-getty-generator(8)
+After=systemd-user-sessions.service getty-pre.target basic.target
+Before=getty.target
+IgnoreOnIsolate=yes
+Conflicts=rescue.service
+Before=rescue.service
+ConditionPathExists=/dev/tty0
+
+[Service]
+ExecStart=-/usr/sbin/agetty --noreset --noclear --issue-file=/etc/issue:/etc/issue.d:/run/issue.d:/usr/lib/issue.d tty1 $TERM
+Type=idle
+Restart=always
+RestartSec=0
+UtmpIdentifier=tty1
+StandardInput=tty
+StandardOutput=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=no
+
+[Install]
+WantedBy=getty.target

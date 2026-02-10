@@ -18,6 +18,18 @@ fi
 
 systemctl enable bh-boot
 
+# These are started manually
+systemctl disable nginx
+
+systemctl disable hostapd
+systemctl unmask hostapd
+
+systemctl unmask dnsmasq
+systemctl disable dnsmasq
+
+systemctl unmask kismet
+systemctl disable kismet
+
 # Force Realtek dongles to _not_ come up as USB MSD
 # https://linux.die.net/man/1/usb_modeswitch
 echo 'ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0bda", ATTR{idProduct}=="1a2b", ATTR{bConfigurationValue}!="1", ATTR{bConfigurationValue}="1"' \
@@ -38,18 +50,34 @@ done
 # Also remove the "not logged in yet" flag if present
 rm -f /root/.not_logged_in_yet || true
 
-# Detect a likely serial console. For most boards this is ttyS0 or ttyAMA0; adjust if needed.
-SERIAL_TTY="ttyS0"
-
-mkdir -p /etc/systemd/system/serial-getty@${SERIAL_TTY}.service.d
-cat >/etc/systemd/system/serial-getty@${SERIAL_TTY}.service.d/autologin.conf <<EOF
-[Service]
-ExecStart=
-ExecStart=-/sbin/agetty --autologin root --keep-baud 115200,38400,9600 %I \$TERM
-EOF
-
-echo bh > /etc/hostname
 echo 'FONT="Lat7-Terminus12x6.psf.gz"' >> /etc/default/console-setup
 
+### Boot optimisation below
+systemctl disable armbian-ramlog.service
+systemctl disable keyboard-setup.service
+
+## Remove network manager requirement from systemd-user-sessions
+install -D -m 0644 /usr/lib/systemd/system/systemd-user-sessions.service \
+  /etc/systemd/system/systemd-user-sessions.service
+
+# Remove network.target from the After= line(s)
+sed -i 's/[[:space:]]network\.target//g' /etc/systemd/system/systemd-user-sessions.service
+sed -i 's/network\.target[[:space:]]//g' /etc/systemd/system/systemd-user-sessions.service
+
+# Alias python -> python3
+ln -sf /usr/bin/python3 /usr/bin/python
+
+# This is something that makes the terminal more fancy (remove it)
+rm /etc/profile.d/80-systemd-osc-context.sh
+
+# Use old wlanX names
+echo "extraargs=net.ifnames=0 biosdevname=0" >> /boot/armbianEnv.txt
+
+# Bjorn requirements
+pip install smbprotocol --break-system-packages
+pip install pysmb --break-system-packages
+
+cd /root/bhtui
+sudo make install
 
 echo "Customization complete."
