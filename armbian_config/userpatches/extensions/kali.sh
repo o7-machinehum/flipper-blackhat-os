@@ -6,6 +6,11 @@ function extension_prepare_config__docker() {
 }
 
 function pre_customize_image__install_kali_packages(){
+	if [[ "${RELEASE}" == "kali-rolling" ]]; then
+		display_alert "Skipping Kali repo extension" "${BOARD}:${RELEASE}-${BRANCH} already uses Kali as the base distro" "info"
+		return 0
+	fi
+
 	display_alert "Adding gpg-key for Kali repository" "${BOARD}:${RELEASE}-${BRANCH} :: ${EXTENSION}" "info"
 	run_host_command_logged curl --max-time 60 -4 -fsSL "https://archive.kali.org/archive-key.asc" "|" gpg --dearmor -o "${SDCARD}"/usr/share/keyrings/kali.gpg
 

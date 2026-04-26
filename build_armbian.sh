@@ -3,7 +3,8 @@ set -e
 cd "$(dirname "$0")"
 
 kver="edge" # Edge or current
-os_release="sid"
+os_release="kali-rolling"
+kali_suite="kali-rolling"
 
 cd armbian
 git reset --hard
@@ -13,6 +14,8 @@ cd ..
 # rm -rf armbian/userpatches/
 rsync -av armbian_config/userpatches/ armbian/userpatches/
 rsync -av armbian_config/config/ armbian/config/
+(cd armbian && patch -p1 < ../armbian_config/patches/kali-base.patch)
+(cd armbian && patch -p1 < ../armbian_config/patches/kali-disable-armbian-repo.patch)
 
 # Copy over dotfiles
 DOTFILES="armbian_config/dotfiles"
@@ -72,6 +75,7 @@ cp rootfs_overlay/var/www/index.html "$armbian_rootfs"/boot/bh/
 cp package/blackhat/src/evil_portal.py "$armbian_rootfs"/usr/local/bin/evil_portal
 
 # Add additional packages
+mkdir -p "armbian/config/cli/${os_release}/main"
 PKG_CONF="armbian/config/cli/${os_release}/main/packages.additional"
 echo usb-modeswitch >> $PKG_CONF
 echo xorg >> $PKG_CONF
@@ -125,10 +129,10 @@ cd armbian
     BRANCH=${kver} \
     BUILD_MINIMAL=no \
     KERNEL_CONFIGURE=no \
-    ENABLE_EXTENSIONS="kali" \
     KEEP_ORIGINAL_OS_RELEASE=yes \
+    KALI_SUITE=${kali_suite} \
     RELEASE=${os_release}
 
 echo ************ Built Image ************
-echo "sudo dd if=armbian/output/images/Armbian-unofficial_26.02.0-trunk_Flipper-blackhat_forky_edge_6.16.8-kali.img of=/dev/sdd bs=4M conv=fsync status=progress"
+echo "sudo dd if=armbian/output/images/<built-image>.img of=/dev/sdd bs=4M conv=fsync status=progress"
 echo *************************************

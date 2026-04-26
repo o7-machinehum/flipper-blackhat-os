@@ -2,7 +2,7 @@
 
 start() {
     # If Armbian Build
-    if grep -qi '^ID=debian' /etc/os-release; then
+    if grep -qi '^ID=kali' /etc/os-release; then
         mount --bind /boot/bh /mnt/
         USB_HUB=0424:2514
         # If Blackpants (USB Hub exists)

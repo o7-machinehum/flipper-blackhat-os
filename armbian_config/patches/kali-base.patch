@@ -1,0 +1,258 @@
+diff --git a/config/distributions/kali-rolling/architectures b/config/distributions/kali-rolling/architectures
+new file mode 100644
+index 000000000..ec6c2ec9f
+--- /dev/null
++++ b/config/distributions/kali-rolling/architectures
+@@ -0,0 +1 @@
++arm64,armhf,amd64
+diff --git a/config/distributions/kali-rolling/name b/config/distributions/kali-rolling/name
+new file mode 100644
+index 000000000..1f764c80b
+--- /dev/null
++++ b/config/distributions/kali-rolling/name
+@@ -0,0 +1 @@
++Kali Rolling
+diff --git a/config/distributions/kali-rolling/order b/config/distributions/kali-rolling/order
+new file mode 100644
+index 000000000..9a03714db
+--- /dev/null
++++ b/config/distributions/kali-rolling/order
+@@ -0,0 +1 @@
++13
+diff --git a/config/distributions/kali-rolling/support b/config/distributions/kali-rolling/support
+new file mode 100644
+index 000000000..70b4bcc73
+--- /dev/null
++++ b/config/distributions/kali-rolling/support
+@@ -0,0 +1 @@
++supported
+diff --git a/config/distributions/kali-rolling/upgrade b/config/distributions/kali-rolling/upgrade
+new file mode 100644
+index 000000000..e69de29bb
+diff --git a/config/cli/kali-rolling/main/packages.additional b/config/cli/kali-rolling/main/packages.additional
+new file mode 100644
+index 000000000..e69de29bb
+--- /dev/null
++++ b/config/cli/kali-rolling/main/packages.additional
+diff --git a/config/cli/kali-rolling/main/packages.remove b/config/cli/kali-rolling/main/packages.remove
+new file mode 100644
+index 000000000..837f62ae4
+--- /dev/null
++++ b/config/cli/kali-rolling/main/packages.remove
+@@ -0,0 +1 @@
++libfuse2
+diff --git a/lib/functions/configuration/main-config.sh b/lib/functions/configuration/main-config.sh
+index ad38031f4..c7c0168d0 100644
+--- a/lib/functions/configuration/main-config.sh
++++ b/lib/functions/configuration/main-config.sh
+@@ -376,6 +376,8 @@ function do_extra_configuration() {
+ 	fi
+ 
+ 	DEBIAN_MIRROR='deb.debian.org/debian'
++	KALI_MIRROR='http.kali.org/kali'
++	KALI_SUITE="${KALI_SUITE:-kali-rolling}"
+ 	# loong64 is using debian-ports repo now
+ 	[[ "${ARCH}" == "loong64" ]] && DEBIAN_MIRROR='deb.debian.org/debian-ports'
+ 	DEBIAN_SECURITY='security.debian.org/'
+@@ -386,6 +387,7 @@ function do_extra_configuration() {
+ 	if [[ $DOWNLOAD_MIRROR == "china" ]]; then
+ 		DEBIAN_MIRROR='mirrors.tuna.tsinghua.edu.cn/debian'
+ 		DEBIAN_SECURITY='mirrors.tuna.tsinghua.edu.cn/debian-security'
++		KALI_MIRROR='mirrors.tuna.tsinghua.edu.cn/kali'
+ 		[[ "${ARCH}" == "amd64" ]] &&
+ 			UBUNTU_MIRROR='mirrors.tuna.tsinghua.edu.cn/ubuntu/' ||
+ 			UBUNTU_MIRROR='mirrors.tuna.tsinghua.edu.cn/ubuntu-ports/'
+@@ -394,6 +396,7 @@ function do_extra_configuration() {
+ 	if [[ $DOWNLOAD_MIRROR == "bfsu" ]]; then
+ 		DEBIAN_MIRROR='mirrors.bfsu.edu.cn/debian'
+ 		DEBIAN_SECURITY='mirrors.bfsu.edu.cn/debian-security'
++		KALI_MIRROR='mirrors.bfsu.edu.cn/kali'
+ 		[[ "${ARCH}" == "amd64" ]] &&
+ 			UBUNTU_MIRROR='mirrors.bfsu.edu.cn/ubuntu/' ||
+ 			UBUNTU_MIRROR='mirrors.bfsu.edu.cn/ubuntu-ports/'
+@@ -453,6 +456,8 @@ function do_extra_configuration() {
+ 	APT_MIRROR=$DEBIAN_MIRROR
+ 	if [[ $DISTRIBUTION == Ubuntu ]]; then
+ 		APT_MIRROR=$UBUNTU_MIRROR
++	elif [[ $RELEASE == "kali-rolling" ]]; then
++		APT_MIRROR=$KALI_MIRROR
+ 	fi
+ 
+ 	[[ -n "${APT_PROXY_ADDR}" ]] && display_alert "Using custom apt proxy address" "APT_PROXY_ADDR=${APT_PROXY_ADDR}" "info"
+diff --git a/lib/functions/rootfs/distro-specific.sh b/lib/functions/rootfs/distro-specific.sh
+index 4e720fe0c..e32b36075 100644
+--- a/lib/functions/rootfs/distro-specific.sh
++++ b/lib/functions/rootfs/distro-specific.sh
+@@ -98,6 +98,9 @@ function fetch_distro_keyring() {
+ 		buster | bullseye | bookworm | trixie | forky | sid)
+ 			distro="debian"
+ 			;;
++		kali-rolling)
++			distro="kali"
++			;;
+ 		focal | jammy | noble | oracular | plucky | questing | resolute )
+ 			distro="ubuntu"
+ 			;;
+@@ -154,6 +157,20 @@ function fetch_distro_keyring() {
+ 			fi
+ 			debootstrap_arguments+=("--keyring=/usr/share/keyrings/ubuntu-archive-keyring.gpg")
+ 			;;
++		kali)
++			if [ -e "${CACHEDIR}/kali-archive-keyring.gpg" ]; then
++				display_alert "fetch_distro_keyring($release)" "cache found, skipping" "info"
++			else
++				run_host_command_logged curl -fsSL "https://archive.kali.org/archive-key.asc" "|" \
++					gpg --batch --yes --dearmor -o "${CACHEDIR}/kali-archive-keyring.gpg" || \
++					exit_with_error "fetch_distro_keyring failed" "unable to download Kali archive key"
++				mkdir -p "${CACHEDIR}/etc"
++				mkdir -p "${CACHEDIR}/usr/share/keyrings"
++				cp -f "${CACHEDIR}/kali-archive-keyring.gpg" "${CACHEDIR}/usr/share/keyrings/kali-archive-keyring.gpg"
++				display_alert "fetch_distro_keyring($release)" "extracted" "info"
++			fi
++			debootstrap_arguments+=("--keyring=/usr/share/keyrings/kali-archive-keyring.gpg")
++			;;
+ 		*)
+ 			exit_with_error "fetch_distro_keyring" "unrecognized distro: $distro"
+ 	esac
+@@ -166,7 +183,7 @@ function fetch_distro_keyring() {
+ # create_sources_list_and_deploy_repo_key <when> <release> <basedir>
+ #
+ # <when>: rootfs|image
+-# <release>: bullseye|bookworm|trixie|forky|sid|focal|jammy|noble|oracular|plucky|questing|resolute
++# <release>: bullseye|bookworm|trixie|forky|sid|kali-rolling|focal|jammy|noble|oracular|plucky|questing|resolute
+ # <basedir>: path to root directory
+ #
+ function create_sources_list_and_deploy_repo_key() {
+@@ -247,6 +264,16 @@ function create_sources_list_and_deploy_repo_key() {
+ 			EOF
+ 			fi
+ 			;;
++		kali-rolling)
++			distro="kali"
++			cat <<- EOF > "${basedir}/etc/apt/sources.list.d/${distro}.sources"
++			Types: deb
++			URIs: http://${KALI_MIRROR}
++			Suites: ${KALI_SUITE}
++			Components: main contrib non-free non-free-firmware
++			Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
++			EOF
++			;;
+ 
+ 		focal | jammy | noble | oracular | plucky | questing | resolute)
+ 			distro="ubuntu"
+diff --git a/lib/functions/general/apt-utils.sh b/lib/functions/general/apt-utils.sh
+index 92bc24283..9a4237d22 100644
+--- a/lib/functions/general/apt-utils.sh
++++ b/lib/functions/general/apt-utils.sh
+@@ -6,6 +6,50 @@
+ 
+ # tl;dr: this function will return the version and download URL of a package.
+ # it is very naive, and will only look into a few repos across Debian/Ubuntu.
++function apt_find_kali_package_version_and_download_url_from_repo_index() {
++	declare sought_package_name="${1}"
++
++	: "${KALI_MIRROR:?KALI_MIRROR is not set}"
++	: "${ARCH:?ARCH is not set}"
++
++	declare first_letter_of_sought_package_name="${sought_package_name:0:1}"
++	declare mirror_with_slash="${KALI_MIRROR}"
++	[[ "${mirror_with_slash}" != */ ]] && mirror_with_slash="${mirror_with_slash}/"
++
++	declare packages_index_url="http://${mirror_with_slash}dists/${KALI_SUITE}/main/binary-${ARCH}/Packages.gz"
++	declare packages_index_file
++	packages_index_file="$(mktemp)"
++
++	curl --silent --show-error --location --max-time 20 "${packages_index_url}" -o "${packages_index_file}" || {
++		rm -f "${packages_index_file}"
++		display_alert "Could not download Kali package index" "${packages_index_url}" "warn"
++		return 1
++	}
++
++	found_package_filename="$({
++		gzip -dc "${packages_index_file}" | awk -v pkg="${sought_package_name}" '
++			BEGIN { in_pkg = 0 }
++			$1 == "Package:" { in_pkg = ($2 == pkg) }
++			in_pkg && $1 == "Filename:" { print $2; exit }
++		'
++	})"
++	rm -f "${packages_index_file}"
++
++	[[ -n "${found_package_filename}" ]] || {
++		display_alert "Could not find package filename for '${sought_package_name}' in Kali repo index" "${packages_index_url}" "warn"
++		return 1
++	}
++
++	found_package_down_url="http://${mirror_with_slash}${found_package_filename}"
++	found_package_filename="${found_package_filename##*/}"
++	found_package_version="$(echo "${found_package_filename}" | grep -oP '(?<=_)[^_]+(?=_)')"
++
++	display_alert "Found Kali package filename" "${found_package_filename}" "info"
++	display_alert "Found Kali package download url" "${found_package_down_url}" "debug"
++	display_alert "Found Kali upstream package version" "${found_package_version}" "info"
++	return 0
++}
++
+ function apt_find_upstream_package_version_and_download_url() {
+ 	declare sought_package_name="${1}"
+ 
+@@ -39,6 +83,10 @@
+ 	fi
+ 
+ 	declare base_down_url="http://${mirror_with_slash}pool/main/${first_letter_of_sought_package_name}/${sought_package_name}"
++	if [[ "${RELEASE}" == "kali-rolling" ]]; then
++		apt_find_kali_package_version_and_download_url_from_repo_index "${sought_package_name}" || return 1
++		return 0
++	fi
+ 	# loong64 is using debian-ports repo, and download from pool-loong64
+ 	[[ "${ARCH}" == "loong64" ]] && declare base_down_url="http://${mirror_with_slash}pool-loong64/main/${first_letter_of_sought_package_name}/${sought_package_name}"
+ 
+diff --git a/lib/functions/rootfs/rootfs-create.sh b/lib/functions/rootfs/rootfs-create.sh
+index 3f849606e..f9f848c51 100644
+--- a/lib/functions/rootfs/rootfs-create.sh
++++ b/lib/functions/rootfs/rootfs-create.sh
+@@ -154,11 +154,15 @@
+ 	cd "${SDCARD}" || exit_with_error "cray-cray about SDCARD" "${SDCARD}" # this will prevent error sh: 0: getcwd() failed
+ 
+ 	declare -ga debootstrap_arguments=(
+-		"--variant=minbase"                                         # minimal base variant. go ask Debian about it.
+-		"--arch=${ARCH}"                                            # the arch
+-		"'--include=${AGGREGATED_PACKAGES_DEBOOTSTRAP_COMMA}'"      # from aggregation.py
+-		"'--components=${AGGREGATED_DEBOOTSTRAP_COMPONENTS_COMMA}'" # from aggregation.py
++		"--variant=minbase" # minimal base variant. go ask Debian about it.
++		"--arch=${ARCH}"    # the arch
+ 	)
++	if [[ -n "${AGGREGATED_PACKAGES_DEBOOTSTRAP_COMMA}" ]]; then
++		debootstrap_arguments+=("'--include=${AGGREGATED_PACKAGES_DEBOOTSTRAP_COMMA}'") # from aggregation.py
++	fi
++	if [[ -n "${AGGREGATED_DEBOOTSTRAP_COMPONENTS_COMMA}" ]]; then
++		debootstrap_arguments+=("'--components=${AGGREGATED_DEBOOTSTRAP_COMPONENTS_COMMA}'") # from aggregation.py
++	fi
+ 	if [[ "${LEGACY_DEBOOTSTRAP,,}" == "no" ]]; then
+ 		debootstrap_arguments+=("'--skip=check/empty'")             # skips check if the rootfs dir is empty at start
+ 		fetch_distro_keyring "$RELEASE"
+@@ -260,7 +264,9 @@
+ 	# @TODO: use asset logging for this; actually log contents of the files too
+ 	run_host_command_logged ls -l "${SDCARD}/usr/share/keyrings"
+ 	run_host_command_logged ls -l "${SDCARD}/etc/apt/sources.list.d"
+-	run_host_command_logged cat "${SDCARD}/etc/apt/sources.list.d/${DISTRIBUTION,,}.sources"
++	if [[ -f "${SDCARD}/etc/apt/sources.list.d/${DISTRIBUTION,,}.sources" ]]; then
++		run_host_command_logged cat "${SDCARD}/etc/apt/sources.list.d/${DISTRIBUTION,,}.sources"
++	fi
+ 
+ 	# stage: update packages list
+ 	display_alert "Updating package list" "$RELEASE" "info"
+diff --git a/lib/tools/aggregation.py b/lib/tools/aggregation.py
+index 521adce3f..52b305a76 100644
+--- a/lib/tools/aggregation.py
++++ b/lib/tools/aggregation.py
+@@ -59,8 +59,8 @@ util.AGGREGATION_SEARCH_ROOT_ABSOLUTE_DIRS = [
+ 	f"{USERPATCHES_PATH}"
+ ]
+ 
+-util.DEBOOTSTRAP_SEARCH_RELATIVE_DIRS = ["cli/_all_distributions/debootstrap", f"cli/{RELEASE}/debootstrap"]
+-util.CLI_SEARCH_RELATIVE_DIRS = ["cli/_all_distributions/main", f"cli/{RELEASE}/main"]
++util.DEBOOTSTRAP_SEARCH_RELATIVE_DIRS = ["cli/common/debootstrap", "cli/_all_distributions/debootstrap", f"cli/{RELEASE}/debootstrap"]
++util.CLI_SEARCH_RELATIVE_DIRS = ["cli/common/main", "cli/_all_distributions/main", f"cli/{RELEASE}/main"]
+ 
+ util.DESKTOP_ENVIRONMENTS_SEARCH_RELATIVE_DIRS = [
+ 	f"desktop/_all_distributions/environments/_all_environments",
