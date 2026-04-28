@@ -17,7 +17,7 @@ if ! lsusb -d "$USB_HUB" >/dev/null 2>&1; then
 fi
 
 armbian=false
-if grep -qi '^ID=debian' /etc/os-release; then
+if grep -qi '^ID=kali' /etc/os-release; then
     armbian=true
 fi
 

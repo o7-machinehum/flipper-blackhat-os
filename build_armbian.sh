@@ -102,6 +102,8 @@ echo cmake >> $PKG_CONF
 echo libicu-dev >> $PKG_CONF
 echo libicu-dev >> $PKG_CONF
 
+echo network-manager-tui >> $PKG_CONF
+
 # Bjorn requirements
 echo python3-pandas >> $PKG_CONF
 echo python3-pil >> $PKG_CONF
