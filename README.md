@@ -3,27 +3,25 @@ A WiFi and security testing OS built on Linux for penetration testing and networ
 
 There are two possible builds in this repository...
 
+
+## Armbian
+Armbian is the suggested operating system when using the Flipper Blackhat with the Flipper Zero and the Blackpants.
+
+### Building
+``` bash
+./bhos_build_kali.sh
+```
+Images are found in `armbian/output/images/`
+
 ## Buildroot
+Buildroot is deprecated for the blackhat but made available for people that want something that boots extremely fast.
 
 ### Building
 Make sure submodules are initialized:
 
-	git submodule update --init
-
-Change to the top-level Buildroot directory:
-
-	cd buildroot
-
-Initialize the configuration, including the defconfig and this external directory:
-
-	make BR2_EXTERNAL=$PWD/../ flipper_blackhat_a33_defconfig
-
-And compile:
-
-	make
-
-## Armbian
-
-### Building
-The armbian build is pretty simple...
-    ./armbian_build.sh
+``` bash
+git submodule update --init
+cd buildroot
+make BR2_EXTERNAL=$PWD/../ flipper_blackhat_a33_defconfig
+make
+```

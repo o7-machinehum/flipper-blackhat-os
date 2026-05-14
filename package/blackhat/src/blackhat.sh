@@ -17,7 +17,7 @@ if ! lsusb -d "$USB_HUB" >/dev/null 2>&1; then
 fi
 
 armbian=false
-if grep -qi '^ID=kali' /etc/os-release; then
+if [[ -f /etc/armbian-release || -f /etc/armbian-image-release ]] || grep -qi '^ID=kali' /etc/os-release; then
     armbian=true
 fi
 
