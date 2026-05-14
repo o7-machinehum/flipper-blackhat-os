@@ -1,7 +1,7 @@
 # Flipper Blackhat OS
 A WiFi and security testing OS built on Linux for penetration testing and network analysis. Designed to run on the [Flipper Blackhat](https://github.com/o7-machinehum/flipper-blackhat).
 
-There are two possible builds in this repository...
+There are two possible builds in this repository, find releases [here](https://github.com/o7-machinehum/flipper-blackhat-os/releases), or instructions to build below.
 
 
 ## Armbian
