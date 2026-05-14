@@ -7,7 +7,6 @@ There are two possible builds in this repository...
 ## Armbian
 Armbian is the suggested operating system when using the Flipper Blackhat with the Flipper Zero and the Blackpants.
 
-### Building
 ``` bash
 ./bhos_build_kali.sh
 ```
@@ -15,9 +14,6 @@ Images are found in `armbian/output/images/`
 
 ## Buildroot
 Buildroot is deprecated for the blackhat but made available for people that want something that boots extremely fast.
-
-### Building
-Make sure submodules are initialized:
 
 ``` bash
 git submodule update --init
