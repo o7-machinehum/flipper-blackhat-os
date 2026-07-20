@@ -1,6 +1,20 @@
 #!/bin/bash
 
+USB_HUB=0424:2514
+blackpants=true
+if ! lsusb -d "$USB_HUB" >/dev/null 2>&1; then
+    blackpants=false
+fi
+
 picom --backend=xrender &
 unclutter -idle 1 &
-xrandr --output DSI-1 --rotate inverted
+
+# Only rotate the screen if we're on blackpants
+if [[ "$blackpants" == true ]]; then
+    xrandr --output DSI-1 --rotate inverted
+else
+    xrandr --output DSI-1 --rotate right
+fi
+
+
 exec i3
