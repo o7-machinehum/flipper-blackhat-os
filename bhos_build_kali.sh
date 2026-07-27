@@ -118,6 +118,7 @@ echo python3-sqlalchemy >> $PKG_CONF
 echo python3-nmap >> $PKG_CONF
 echo python3-pip >> $PKG_CONF
 echo python3-legacy-cgi >> $PKG_CONF
+echo mgba-qt >> $PKG_CONF
 
 cd armbian
 

@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_subdirectory(third-party/TermOx)
 
 add_executable(bhtui
+    src/gameboy.cpp
     src/main.cpp
     src/menu_app.cpp
     src/menu_builder.cpp
@@ -17,6 +18,7 @@ add_executable(bhtui
 target_link_libraries(bhtui
     PRIVATE
         TermOx
+        ${CMAKE_DL_LIBS}
 )
 
 if (MSVC)

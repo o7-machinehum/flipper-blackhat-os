@@ -55,6 +55,7 @@ rm -f /root/.not_logged_in_yet || true
 
 mkdir -p /etc/default
 echo 'FONT="Lat7-Terminus12x6.psf.gz"' >> /etc/default/console-setup
+setupcon --save-only
 
 ### Boot optimisation below
 systemctl disable armbian-ramlog.service || true

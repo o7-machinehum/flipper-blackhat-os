@@ -97,6 +97,7 @@ auto MenuApp::enter_selected() -> bool
     auto const selection = clamp_selection(current_selection(), items.size());
     auto& item = items[selection];
     if (item.children.empty()) {
+        if (item.print.empty()) { return false; }
         output_ = selected_print_path();
         return true;
     }
@@ -181,9 +182,17 @@ void MenuApp::draw_column(Canvas c,
                           bool active)
 {
     auto const max_y = c.size.height - 2;
-    for (std::size_t i = 0; i < items.size(); ++i) {
-        auto const row = y + static_cast<int>(i);
-        if (row >= max_y) { break; }
+    auto const visible_rows = std::max(0, max_y - y);
+    auto first = std::size_t{0};
+    if (active && visible_rows > 0 &&
+        selection >= static_cast<std::size_t>(visible_rows)) {
+        first = selection - static_cast<std::size_t>(visible_rows) + 1;
+    }
+
+    for (auto row_offset = 0; row_offset < visible_rows; ++row_offset) {
+        auto const i = first + static_cast<std::size_t>(row_offset);
+        if (i >= items.size()) { break; }
+        auto const row = y + row_offset;
 
         auto line = items[i].display;
         auto const selected = (i == selection);
