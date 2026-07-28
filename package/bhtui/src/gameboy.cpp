@@ -4,7 +4,6 @@
 #include <array>
 #include <cerrno>
 #include <chrono>
-#include <cctype>
 #include <cstdint>
 #include <cstring>
 #include <dlfcn.h>
@@ -50,24 +49,6 @@ constexpr std::uint8_t ButtonStartReleased = 0x8f;
 constexpr std::uint8_t QuitGame = 0x90;
 constexpr std::uint8_t GameModeStarted = 0x91;
 constexpr std::uint8_t GameModeStopped = 0x92;
-
-auto lower_extension(std::filesystem::path const& path) -> std::string
-{
-    auto extension = path.extension().string();
-    std::transform(
-        extension.begin(),
-        extension.end(),
-        extension.begin(),
-        [](unsigned char c) { return static_cast<char>(std::tolower(c)); }
-    );
-    return extension;
-}
-
-auto is_rom(std::filesystem::path const& path) -> bool
-{
-    auto const extension = lower_extension(path);
-    return extension == ".gb" || extension == ".gbc";
-}
 
 auto shell_quote(std::string const& text) -> std::string
 {
@@ -316,15 +297,29 @@ auto load_x11_function(void* library, char const* name) -> Function
     return reinterpret_cast<Function>(::dlsym(library, name));
 }
 
-void center_mgba_window()
+void center_mgba_window(pid_t mgba_pid)
 {
     using Display = void;
     using Window = unsigned long;
+    using Atom = unsigned long;
     using OpenDisplay = Display* (*)(char const*);
     using DefaultScreen = int (*)(Display*);
     using RootWindow = Window (*)(Display*, int);
     using QueryTree =
         int (*)(Display*, Window, Window*, Window*, Window**, unsigned int*);
+    using InternAtom = Atom (*)(Display*, char const*, int);
+    using GetWindowProperty = int (*)(Display*,
+                                      Window,
+                                      Atom,
+                                      long,
+                                      long,
+                                      int,
+                                      Atom,
+                                      Atom*,
+                                      int*,
+                                      unsigned long*,
+                                      unsigned long*,
+                                      unsigned char**);
     using GetGeometry = int (*)(Display*,
                                 Window,
                                 Window*,
@@ -347,6 +342,9 @@ void center_mgba_window()
         load_x11_function<DefaultScreen>(library, "XDefaultScreen");
     auto const root_window = load_x11_function<RootWindow>(library, "XRootWindow");
     auto const query_tree = load_x11_function<QueryTree>(library, "XQueryTree");
+    auto const intern_atom = load_x11_function<InternAtom>(library, "XInternAtom");
+    auto const get_window_property =
+        load_x11_function<GetWindowProperty>(library, "XGetWindowProperty");
     auto const get_geometry = load_x11_function<GetGeometry>(library, "XGetGeometry");
     auto const move_window = load_x11_function<MoveWindow>(library, "XMoveWindow");
     auto const flush = load_x11_function<Flush>(library, "XFlush");
@@ -355,8 +353,10 @@ void center_mgba_window()
         load_x11_function<CloseDisplay>(library, "XCloseDisplay");
     if (open_display == nullptr || default_screen == nullptr ||
         root_window == nullptr || query_tree == nullptr ||
-        get_geometry == nullptr || move_window == nullptr || flush == nullptr ||
-        free_memory == nullptr || close_display == nullptr) {
+        intern_atom == nullptr || get_window_property == nullptr ||
+        get_geometry == nullptr || move_window == nullptr ||
+        flush == nullptr || free_memory == nullptr ||
+        close_display == nullptr) {
         ::dlclose(library);
         return;
     }
@@ -368,6 +368,7 @@ void center_mgba_window()
     }
 
     auto const root = root_window(display, default_screen(display));
+    auto const pid_atom = intern_atom(display, "_NET_WM_PID", 0);
     for (auto attempts = 0; attempts < 100; ++attempts) {
         auto returned_root = Window{};
         auto parent = Window{};
@@ -382,53 +383,82 @@ void center_mgba_window()
                 &child_count
             ) &&
             child_count > 0) {
-            auto geometry_root = Window{};
-            auto root_x = 0;
-            auto root_y = 0;
-            auto root_width = 0U;
-            auto root_height = 0U;
-            auto root_border = 0U;
-            auto root_depth = 0U;
-            auto window_x = 0;
-            auto window_y = 0;
-            auto window_width = 0U;
-            auto window_height = 0U;
-            auto window_border = 0U;
-            auto window_depth = 0U;
+            for (auto child_index = 0U; child_index < child_count; ++child_index) {
+                auto actual_type = Atom{};
+                auto actual_format = 0;
+                auto item_count = 0UL;
+                auto bytes_after = 0UL;
+                auto* property = static_cast<unsigned char*>(nullptr);
+                auto const property_status = get_window_property(
+                    display,
+                    children[child_index],
+                    pid_atom,
+                    0,
+                    1,
+                    0,
+                    0,
+                    &actual_type,
+                    &actual_format,
+                    &item_count,
+                    &bytes_after,
+                    &property
+                );
+                auto const is_mgba =
+                    property_status == 0 && actual_format == 32 &&
+                    item_count > 0 && property != nullptr &&
+                    *reinterpret_cast<unsigned long*>(property) ==
+                        static_cast<unsigned long>(mgba_pid);
+                if (property != nullptr) { free_memory(property); }
+                if (!is_mgba) { continue; }
 
-            auto const have_root_geometry = get_geometry(
-                display,
-                root,
-                &geometry_root,
-                &root_x,
-                &root_y,
-                &root_width,
-                &root_height,
-                &root_border,
-                &root_depth
-            );
-            auto const have_window_geometry = get_geometry(
-                display,
-                children[0],
-                &geometry_root,
-                &window_x,
-                &window_y,
-                &window_width,
-                &window_height,
-                &window_border,
-                &window_depth
-            );
-            if (have_root_geometry && have_window_geometry) {
-                auto const x =
-                    std::max(0, (static_cast<int>(root_width) -
-                                 static_cast<int>(window_width)) /
-                                    2);
-                auto const y =
-                    std::max(0, (static_cast<int>(root_height) -
-                                 static_cast<int>(window_height)) /
-                                    2);
-                move_window(display, children[0], x, y);
-                flush(display);
+                auto geometry_root = Window{};
+                auto root_x = 0;
+                auto root_y = 0;
+                auto root_width = 0U;
+                auto root_height = 0U;
+                auto root_border = 0U;
+                auto root_depth = 0U;
+                auto window_x = 0;
+                auto window_y = 0;
+                auto window_width = 0U;
+                auto window_height = 0U;
+                auto window_border = 0U;
+                auto window_depth = 0U;
+                auto const have_root_geometry = get_geometry(
+                    display,
+                    root,
+                    &geometry_root,
+                    &root_x,
+                    &root_y,
+                    &root_width,
+                    &root_height,
+                    &root_border,
+                    &root_depth
+                );
+                auto const have_window_geometry = get_geometry(
+                    display,
+                    children[child_index],
+                    &geometry_root,
+                    &window_x,
+                    &window_y,
+                    &window_width,
+                    &window_height,
+                    &window_border,
+                    &window_depth
+                );
+                if (have_root_geometry && have_window_geometry) {
+                    auto const x =
+                        std::max(0, (static_cast<int>(root_width) -
+                                     static_cast<int>(window_width)) /
+                                        2);
+                    auto const y =
+                        std::max(0, (static_cast<int>(root_height) -
+                                     static_cast<int>(window_height)) /
+                                        2);
+                    move_window(display, children[child_index], x, y);
+                    flush(display);
+                }
+                break;
             }
         }
         if (children != nullptr) { free_memory(children); }
@@ -446,9 +476,7 @@ auto find_roms(std::filesystem::path const& directory)
 {
     auto roms = std::vector<std::filesystem::path>{};
     for (auto const& entry : std::filesystem::directory_iterator{directory}) {
-        if (entry.is_regular_file() && is_rom(entry.path())) {
-            roms.push_back(entry.path());
-        }
+        if (entry.is_regular_file()) { roms.push_back(entry.path()); }
     }
 
     std::sort(roms.begin(), roms.end(), [](auto const& left, auto const& right) {
@@ -471,8 +499,9 @@ auto play_rom(std::filesystem::path const& rom) -> int
 {
     auto const expected_parent = std::filesystem::canonical(rom_directory());
     auto const selected_rom = std::filesystem::canonical(rom);
-    if (selected_rom.parent_path() != expected_parent || !is_rom(selected_rom)) {
-        throw std::runtime_error{"ROM must be a .gb or .gbc file in /mnt/roms"};
+    if (selected_rom.parent_path() != expected_parent ||
+        !std::filesystem::is_regular_file(selected_rom)) {
+        throw std::runtime_error{"ROM must be a file in /mnt/roms"};
     }
 
     auto keyboard = VirtualKeyboard{};
@@ -536,9 +565,26 @@ auto run_mgba_session(std::filesystem::path const& rom) -> int
         _exit(127);
     }
 
-    center_mgba_window();
+    auto const unclutter_pid = ::fork();
+    if (unclutter_pid == 0) {
+        ::execl(
+            "/usr/bin/unclutter",
+            "unclutter",
+            "-idle",
+            "1",
+            static_cast<char*>(nullptr)
+        );
+        _exit(127);
+    }
+
+    center_mgba_window(pid);
 
     auto status = 0;
-    if (::waitpid(pid, &status, 0) == -1) { return 1; }
+    auto const wait_result = ::waitpid(pid, &status, 0);
+    if (unclutter_pid > 0) {
+        ::kill(unclutter_pid, SIGTERM);
+        ::waitpid(unclutter_pid, nullptr, 0);
+    }
+    if (wait_result == -1) { return 1; }
     return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
 }

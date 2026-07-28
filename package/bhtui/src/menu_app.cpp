@@ -224,8 +224,7 @@ void MenuApp::draw_menu(Canvas c)
     auto const start_y = 4;
     auto const left_margin = 2;
     auto const gap = 1;
-    auto const available = c.size.width - left_margin * 2 - gap * 2;
-    auto const column_width = std::max(1, available / 4);
+    auto const available = c.size.width - left_margin * 2;
 
     auto const* level0 = items_at_path(path_);
     if (level0 == nullptr) { return; }
@@ -246,6 +245,11 @@ void MenuApp::draw_menu(Canvas c)
         (level2 && selections_.size() > path_.size() + 2)
             ? clamp_selection(selections_[path_.size() + 2], level2->size())
             : 0U;
+    auto const column_count = level2 && !level2->empty()
+                                  ? 3
+                                  : level1 && !level1->empty() ? 2 : 1;
+    auto const column_width =
+        std::max(1, (available - gap * (column_count - 1)) / column_count);
 
     draw_column(c, *level0, sel0, left_margin, start_y, column_width, true);
 

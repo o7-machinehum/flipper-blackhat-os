@@ -17,6 +17,7 @@ if [ -d /tmp/overlay ]; then
 fi
 
 systemctl enable bh-boot
+systemctl enable ssh
 
 # These are started manually
 systemctl disable nginx || true
