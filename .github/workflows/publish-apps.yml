@@ -1,0 +1,88 @@
+name: Publish bh and bhtui
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: master
+          submodules: recursive
+
+      - name: Install ARM build dependencies
+        run: |
+          sudo dpkg --add-architecture armhf
+          sudo tee /etc/apt/sources.list.d/ubuntu.sources >/dev/null <<'EOF'
+          Types: deb
+          URIs: http://archive.ubuntu.com/ubuntu
+          Suites: noble noble-updates noble-backports
+          Components: main universe restricted multiverse
+          Architectures: amd64
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+          Types: deb
+          URIs: http://security.ubuntu.com/ubuntu
+          Suites: noble-security
+          Components: main universe restricted multiverse
+          Architectures: amd64
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+          Types: deb
+          URIs: http://ports.ubuntu.com/ubuntu-ports
+          Suites: noble noble-updates noble-backports noble-security
+          Components: main universe restricted multiverse
+          Architectures: armhf
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          EOF
+          sudo apt-get update
+          sudo apt-get install -y g++-arm-linux-gnueabihf libicu-dev:armhf
+
+      - name: Build bhtui
+        run: |
+          cmake -S package/bhtui -B package/bhtui/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_SYSTEM_NAME=Linux \
+            -DCMAKE_SYSTEM_PROCESSOR=arm \
+            -DCMAKE_CXX_COMPILER=arm-linux-gnueabihf-g++
+          cmake --build package/bhtui/build --target bhtui --parallel
+
+      - name: Package bh and bhtui
+        run: |
+          mkdir -p dist/apps dist/bh/scripts dist/bhtui
+
+          install -m 0755 package/blackhat/src/blackhat.sh dist/bh/bh
+          install -m 0755 package/blackhat/src/evil_portal.py dist/bh/
+          install -m 0644 package/blackhat/src/telegram.py dist/bh/
+          install -m 0644 package/blackhat/src/blackhat.conf dist/bh/
+          cp -a package/blackhat/scripts/. dist/bh/scripts/
+          printf '%s\n' Flask requests PyWiFi > dist/bh/requirements.txt
+
+          install -m 0755 package/bhtui/build/bhtui dist/bhtui/
+
+          tar -C dist -czf dist/apps/bh.tar.gz bh
+          tar -C dist -czf dist/apps/bhtui-linux-armhf.tar.gz bhtui
+          rm -rf dist/bh dist/bhtui
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
