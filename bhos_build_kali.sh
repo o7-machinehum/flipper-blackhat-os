@@ -48,6 +48,7 @@ armbian_rootfs="armbian/userpatches/overlay/"
 
 # Install packages needed for bh scripts
 install -D package/blackhat/src/blackhat.sh "$armbian_rootfs"/usr/local/bin/bh
+install -D -m 0644 package/blackhat/src/telegram.py "$armbian_rootfs"/usr/lib/python3/dist-packages/telegram.py
 mkdir -p "$armbian_rootfs"/root/bjorn
 cp -r package/bjorn/bjorn/* "$armbian_rootfs"/root/bjorn/
 install -D -m 0644 package/blackhat/src/blackhat.conf "$armbian_rootfs"/boot/bh/blackhat.conf

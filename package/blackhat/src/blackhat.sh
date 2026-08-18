@@ -56,6 +56,7 @@ print_help() {
     echo "  deauth_broadcast [iface]             Deauth all visible associations"
     echo "  deauth_scan [iface]                  Scan and show targets for deauth"
     echo "  test_inet           Ping google.com"
+    echo "  update              Update bh and bhtui"
     echo "  get                 Get currently set parameters"
     echo "  script"
     echo "    scan"
@@ -425,6 +426,38 @@ ssh() {
     bh wifi ip
 }
 
+update_apps() (
+    set -e
+
+    if [[ "$EUID" -ne 0 ]]; then
+        echo "Run this command as root: sudo bh update"
+        exit 1
+    fi
+
+    local base_url="https://o7-machinehum.github.io/flipper-blackhat-os/apps"
+    local update_dir
+    update_dir=$(mktemp -d)
+    trap 'rm -rf "$update_dir"' EXIT
+
+    echo "Downloading application updates..."
+    curl -f -o "$update_dir/bh.tar.gz" "$base_url/bh.tar.gz"
+    curl -f -o "$update_dir/bhtui-linux-armhf.tar.gz" "$base_url/bhtui-linux-armhf.tar.gz"
+    tar -xzf "$update_dir/bh.tar.gz" -C "$update_dir"
+    tar -xzf "$update_dir/bhtui-linux-armhf.tar.gz" -C "$update_dir"
+
+    python3 -m pip install --break-system-packages --requirement "$update_dir/bh/requirements.txt"
+
+    install -m 0755 "$update_dir/bh/evil_portal.py" /usr/local/bin/evil_portal
+    install -m 0644 "$update_dir/bh/telegram.py" /usr/lib/python3/dist-packages/telegram.py
+    install -d /boot/bh/scripts
+    cp -r "$update_dir/bh/scripts/." /boot/bh/scripts/
+
+    install -m 0755 "$update_dir/bhtui/bhtui" /usr/local/bin/bhtui
+    install -m 0755 "$update_dir/bh/bh" /usr/local/bin/bh
+
+    echo "bh and bhtui are up to date."
+)
+
 setup_monitor_mode() {
     local iface=$1
     echo "Setting up monitor mode on $iface..."
@@ -624,6 +657,9 @@ case "$subcommand" in
         ;;
     test_inet)
         ping google.com -w 3
+        ;;
+    update)
+        update_apps
         ;;
     help)
         print_help
