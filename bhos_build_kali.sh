@@ -101,6 +101,7 @@ echo doom-wad-shareware >> $PKG_CONF
 echo cmake >> $PKG_CONF
 echo libicu-dev >> $PKG_CONF
 echo libicu-dev >> $PKG_CONF
+echo aircrack-ng >> $PKG_CONF
 
 echo network-manager-tui >> $PKG_CONF
 
