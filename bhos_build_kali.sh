@@ -103,6 +103,10 @@ echo cmake >> $PKG_CONF
 echo libicu-dev >> $PKG_CONF
 echo libicu-dev >> $PKG_CONF
 echo aircrack-ng >> $PKG_CONF
+echo kismet >> $PKG_CONF
+echo fastfetch >> $PKG_CONF
+echo wireless-tools >> $PKG_CONF
+echo smbclient >> $PKG_CONF
 
 echo network-manager-tui >> $PKG_CONF
 
