@@ -2,7 +2,6 @@
 set -e
 cd "$(dirname "$0")"
 
-kver="edge" # Edge or current
 os_release="kali-rolling"
 kali_suite="kali-rolling"
 
@@ -34,15 +33,8 @@ cp $DOTFILES/alacritty.toml $ROOTDIR/.config/alacritty/
 cp armbian_config/kali.png $ROOTDIR/
 
 # Add kernel patches
-if [[ ${kver} == "edge" ]]; then
-    cp patches/linux/0002-rtw88.patch armbian/userpatches/kernel/archive/sunxi-6.16/rtw88.patch
-    cp patches/linux/0003-st7701.patch armbian/userpatches/kernel/archive/sunxi-6.16/st7701.patch
-elif [[ ${kver} == "current" ]]; then
-    cp patches/linux/0003-st7701.patch armbian/userpatches/kernel/archive/sunxi-6.12/st7701.patch
-else
-    echo "Incorrect Kernel Version"
-    exit
-fi
+cp patches/linux/0002-rtw88.patch armbian/userpatches/kernel/archive/sunxi-7.1/rtw88.patch
+cp patches/linux/0003-st7701.patch armbian/userpatches/kernel/archive/sunxi-7.1/st7701.patch
 
 armbian_rootfs="armbian/userpatches/overlay/"
 
@@ -135,7 +127,7 @@ cd armbian
 
 ./compile.sh build \
     BOARD=flipper-blackhat \
-    BRANCH=${kver} \
+    BRANCH=edge \
     BUILD_MINIMAL=no \
     KERNEL_CONFIGURE=no \
     KEEP_ORIGINAL_OS_RELEASE=yes \

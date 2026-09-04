@@ -32,7 +32,7 @@ index 1f72ef7ca74c..9037ab68ce28 100644
  static void ts8550b_gip_sequence(struct st7701 *st7701)
  {
  	/**
-@@ -591,11 +614,28 @@ static int st7701_unprepare(struct drm_panel *panel)
+@@ -613,11 +636,28 @@ static int st7701_unprepare(struct drm_panel *panel)
  	return 0;
  }
 
@@ -62,7 +62,7 @@ index 1f72ef7ca74c..9037ab68ce28 100644
  	struct drm_display_mode *mode;
 
  	mode = drm_mode_duplicate(connector->dev, desc_mode);
-@@ -606,6 +646,14 @@ static int st7701_get_modes(struct drm_panel *panel,
+@@ -628,6 +668,14 @@ static int st7701_get_modes(struct drm_panel *panel,
  		return -ENOMEM;
  	}
 
@@ -77,7 +77,7 @@ index 1f72ef7ca74c..9037ab68ce28 100644
  	drm_mode_set_name(mode);
  	drm_mode_probed_add(connector, mode);
 
-@@ -637,6 +685,83 @@ static const struct drm_panel_funcs st7701_funcs = {
+@@ -659,6 +707,83 @@ static const struct drm_panel_funcs st7701_funcs = {
  	.get_orientation = st7701_get_orientation,
  };
 
@@ -161,11 +161,12 @@ index 1f72ef7ca74c..9037ab68ce28 100644
  static const struct drm_display_mode ts8550b_mode = {
  	.clock		= 27500,
 
-@@ -1265,6 +1390,7 @@ static const struct of_device_id st7701_dsi_of_match[] = {
+@@ -1388,7 +1513,8 @@ static const struct of_device_id st7701_dsi_of_match[] = {
  	{ .compatible = "densitron,dmt028vghmcmi-1a", .data = &dmt028vghmcmi_1a_desc },
  	{ .compatible = "elida,kd50t048a", .data = &kd50t048a_desc },
  	{ .compatible = "techstar,ts8550b", .data = &ts8550b_desc },
 +	{ .compatible = "displaymodule,tft34-485", .data = &tft34_485_desc },
+ 	{ .compatible = "winstar,wf40eswaa6mnn0", .data = &wf40eswaa6mnn0_desc },
  	{ }
  };
  MODULE_DEVICE_TABLE(of, st7701_dsi_of_match);

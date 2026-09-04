@@ -45,16 +45,17 @@ diff --git a/lib/functions/configuration/main-config.sh b/lib/functions/configur
 index ad38031f4..c7c0168d0 100644
 --- a/lib/functions/configuration/main-config.sh
 +++ b/lib/functions/configuration/main-config.sh
-@@ -376,6 +376,8 @@ function do_extra_configuration() {
+@@ -397,7 +397,9 @@ function do_extra_configuration() {
  	fi
  
  	DEBIAN_MIRROR='deb.debian.org/debian'
 +	KALI_MIRROR='http.kali.org/kali'
 +	KALI_SUITE="${KALI_SUITE:-kali-rolling}"
- 	# loong64 is using debian-ports repo now
- 	[[ "${ARCH}" == "loong64" ]] && DEBIAN_MIRROR='deb.debian.org/debian-ports'
+ 	# loong64 was promoted from debian-ports into the main Debian archive (it is
+ 	# listed in sid's Architectures: and dropped from debian-ports), so it now uses
+ 	# the default deb.debian.org/debian mirror like every other architecture.
  	DEBIAN_SECURITY='security.debian.org/'
-@@ -386,6 +387,7 @@ function do_extra_configuration() {
+@@ -408,6 +410,7 @@ function do_extra_configuration() {
  	if [[ $DOWNLOAD_MIRROR == "china" ]]; then
  		DEBIAN_MIRROR='mirrors.tuna.tsinghua.edu.cn/debian'
  		DEBIAN_SECURITY='mirrors.tuna.tsinghua.edu.cn/debian-security'
@@ -62,7 +63,7 @@ index ad38031f4..c7c0168d0 100644
  		[[ "${ARCH}" == "amd64" ]] &&
  			UBUNTU_MIRROR='mirrors.tuna.tsinghua.edu.cn/ubuntu/' ||
  			UBUNTU_MIRROR='mirrors.tuna.tsinghua.edu.cn/ubuntu-ports/'
-@@ -394,6 +396,7 @@ function do_extra_configuration() {
+@@ -416,6 +419,7 @@ function do_extra_configuration() {
  	if [[ $DOWNLOAD_MIRROR == "bfsu" ]]; then
  		DEBIAN_MIRROR='mirrors.bfsu.edu.cn/debian'
  		DEBIAN_SECURITY='mirrors.bfsu.edu.cn/debian-security'
@@ -70,7 +71,7 @@ index ad38031f4..c7c0168d0 100644
  		[[ "${ARCH}" == "amd64" ]] &&
  			UBUNTU_MIRROR='mirrors.bfsu.edu.cn/ubuntu/' ||
  			UBUNTU_MIRROR='mirrors.bfsu.edu.cn/ubuntu-ports/'
-@@ -453,6 +456,8 @@ function do_extra_configuration() {
+@@ -475,6 +479,8 @@ function do_extra_configuration() {
  	APT_MIRROR=$DEBIAN_MIRROR
  	if [[ $DISTRIBUTION == Ubuntu ]]; then
  		APT_MIRROR=$UBUNTU_MIRROR
@@ -78,22 +79,22 @@ index ad38031f4..c7c0168d0 100644
 +		APT_MIRROR=$KALI_MIRROR
  	fi
  
- 	[[ -n "${APT_PROXY_ADDR}" ]] && display_alert "Using custom apt proxy address" "APT_PROXY_ADDR=${APT_PROXY_ADDR}" "info"
+ 	# Derive APT_PROXY_ADDR from proxy env vars if unset, which runners.sh uses inside chroot.
 diff --git a/lib/functions/rootfs/distro-specific.sh b/lib/functions/rootfs/distro-specific.sh
 index 4e720fe0c..e32b36075 100644
 --- a/lib/functions/rootfs/distro-specific.sh
 +++ b/lib/functions/rootfs/distro-specific.sh
-@@ -98,6 +98,9 @@ function fetch_distro_keyring() {
+@@ -103,6 +103,9 @@ function fetch_distro_keyring() {
  		buster | bullseye | bookworm | trixie | forky | sid)
  			distro="debian"
  			;;
 +		kali-rolling)
 +			distro="kali"
 +			;;
- 		focal | jammy | noble | oracular | plucky | questing | resolute )
+ 		focal | jammy | noble | oracular | plucky | questing | resolute)
  			distro="ubuntu"
  			;;
-@@ -154,6 +157,20 @@ function fetch_distro_keyring() {
+@@ -160,7 +163,21 @@ function fetch_distro_keyring() {
  			fi
  			debootstrap_arguments+=("--keyring=/usr/share/keyrings/ubuntu-archive-keyring.gpg")
  			;;
@@ -113,8 +114,9 @@ index 4e720fe0c..e32b36075 100644
 +			;;
  		*)
  			exit_with_error "fetch_distro_keyring" "unrecognized distro: $distro"
+ 			;;
  	esac
-@@ -166,7 +183,7 @@ function fetch_distro_keyring() {
+@@ -173,7 +190,7 @@ function fetch_distro_keyring() {
  # create_sources_list_and_deploy_repo_key <when> <release> <basedir>
  #
  # <when>: rootfs|image
@@ -123,10 +125,9 @@ index 4e720fe0c..e32b36075 100644
  # <basedir>: path to root directory
  #
  function create_sources_list_and_deploy_repo_key() {
-@@ -247,6 +264,16 @@ function create_sources_list_and_deploy_repo_key() {
- 			EOF
- 			fi
+@@ -253,4 +270,15 @@ function create_sources_list_and_deploy_repo_key() {
  			;;
++
 +		kali-rolling)
 +			distro="kali"
 +			cat <<- EOF > "${basedir}/etc/apt/sources.list.d/${distro}.sources"
@@ -195,22 +196,20 @@ index 92bc24283..9a4237d22 100644
  function apt_find_upstream_package_version_and_download_url() {
  	declare sought_package_name="${1}"
  
-@@ -39,6 +83,10 @@
- 	fi
- 
+@@ -41,3 +85,7 @@ function apt_find_upstream_package_version_and_download_url() {
  	declare base_down_url="http://${mirror_with_slash}pool/main/${first_letter_of_sought_package_name}/${sought_package_name}"
 +	if [[ "${RELEASE}" == "kali-rolling" ]]; then
 +		apt_find_kali_package_version_and_download_url_from_repo_index "${sought_package_name}" || return 1
 +		return 0
 +	fi
- 	# loong64 is using debian-ports repo, and download from pool-loong64
- 	[[ "${ARCH}" == "loong64" ]] && declare base_down_url="http://${mirror_with_slash}pool-loong64/main/${first_letter_of_sought_package_name}/${sought_package_name}"
+ 	# loong64 historically lived only in debian-ports (mirror .../debian-ports,
+ 	# pool-loong64). It has since been promoted to the Debian main archive for
  
 diff --git a/lib/functions/rootfs/rootfs-create.sh b/lib/functions/rootfs/rootfs-create.sh
 index 3f849606e..f9f848c51 100644
 --- a/lib/functions/rootfs/rootfs-create.sh
 +++ b/lib/functions/rootfs/rootfs-create.sh
-@@ -154,11 +154,15 @@
+@@ -94,12 +94,16 @@
  	cd "${SDCARD}" || exit_with_error "cray-cray about SDCARD" "${SDCARD}" # this will prevent error sh: 0: getcwd() failed
  
  	declare -ga debootstrap_arguments=(
@@ -218,8 +217,9 @@ index 3f849606e..f9f848c51 100644
 -		"--arch=${ARCH}"                                            # the arch
 -		"'--include=${AGGREGATED_PACKAGES_DEBOOTSTRAP_COMMA}'"      # from aggregation.py
 -		"'--components=${AGGREGATED_DEBOOTSTRAP_COMPONENTS_COMMA}'" # from aggregation.py
-+		"--variant=minbase" # minimal base variant. go ask Debian about it.
-+		"--arch=${ARCH}"    # the arch
++		"--variant=minbase"                                         # minimal base variant. go ask Debian about it.
++		"--arch=${ARCH}"                                            # the arch
+ 		"'--skip=check/empty'"                                      # skips check if the rootfs dir is empty at start
  	)
 +	if [[ -n "${AGGREGATED_PACKAGES_DEBOOTSTRAP_COMMA}" ]]; then
 +		debootstrap_arguments+=("'--include=${AGGREGATED_PACKAGES_DEBOOTSTRAP_COMMA}'") # from aggregation.py
@@ -227,10 +227,10 @@ index 3f849606e..f9f848c51 100644
 +	if [[ -n "${AGGREGATED_DEBOOTSTRAP_COMPONENTS_COMMA}" ]]; then
 +		debootstrap_arguments+=("'--components=${AGGREGATED_DEBOOTSTRAP_COMPONENTS_COMMA}'") # from aggregation.py
 +	fi
- 	if [[ "${LEGACY_DEBOOTSTRAP,,}" == "no" ]]; then
- 		debootstrap_arguments+=("'--skip=check/empty'")             # skips check if the rootfs dir is empty at start
- 		fetch_distro_keyring "$RELEASE"
-@@ -260,7 +264,9 @@
+ 
+ 	# Show mmdebstrap's per-package download/install progress when
+ 	# DEBUG=yes. Default (no flag) keeps the terse log; DEBUG builds
+@@ -212,7 +216,9 @@
  	# @TODO: use asset logging for this; actually log contents of the files too
  	run_host_command_logged ls -l "${SDCARD}/usr/share/keyrings"
  	run_host_command_logged ls -l "${SDCARD}/etc/apt/sources.list.d"
@@ -245,7 +245,7 @@ diff --git a/lib/tools/aggregation.py b/lib/tools/aggregation.py
 index 521adce3f..52b305a76 100644
 --- a/lib/tools/aggregation.py
 +++ b/lib/tools/aggregation.py
-@@ -59,8 +59,8 @@ util.AGGREGATION_SEARCH_ROOT_ABSOLUTE_DIRS = [
+@@ -58,8 +58,8 @@ util.AGGREGATION_SEARCH_ROOT_ABSOLUTE_DIRS = [
  	f"{USERPATCHES_PATH}"
  ]
  
@@ -254,5 +254,5 @@ index 521adce3f..52b305a76 100644
 +util.DEBOOTSTRAP_SEARCH_RELATIVE_DIRS = ["cli/common/debootstrap", "cli/_all_distributions/debootstrap", f"cli/{RELEASE}/debootstrap"]
 +util.CLI_SEARCH_RELATIVE_DIRS = ["cli/common/main", "cli/_all_distributions/main", f"cli/{RELEASE}/main"]
  
- util.DESKTOP_ENVIRONMENTS_SEARCH_RELATIVE_DIRS = [
- 	f"desktop/_all_distributions/environments/_all_environments",
+ # Debootstrap.
+ debootstrap_packages = util.aggregate_all_debootstrap("packages")
