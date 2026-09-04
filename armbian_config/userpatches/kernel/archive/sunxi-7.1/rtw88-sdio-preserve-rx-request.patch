@@ -1,0 +1,11 @@
+diff --git a/drivers/net/wireless/realtek/rtw88/sdio.c b/drivers/net/wireless/realtek/rtw88/sdio.c
+index 6e705d85da56..1318e94f8524 100644
+--- a/drivers/net/wireless/realtek/rtw88/sdio.c
++++ b/drivers/net/wireless/realtek/rtw88/sdio.c
+@@ -1083,5 +1083,6 @@ static void rtw_sdio_handle_interrupt(struct sdio_func *sdio_func)
+ 	if (hisr & REG_SDIO_HISR_TXERR)
+ 		rtw_sdio_tx_err_isr(rtwdev);
+ 	if (hisr & REG_SDIO_HISR_RX_REQUEST) {
++		hisr &= ~REG_SDIO_HISR_RX_REQUEST;
+ 		rtw_sdio_rx_isr(rtwdev);
+ 	}

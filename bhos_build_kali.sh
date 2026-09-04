@@ -33,7 +33,6 @@ cp $DOTFILES/alacritty.toml $ROOTDIR/.config/alacritty/
 cp armbian_config/kali.png $ROOTDIR/
 
 # Add kernel patches
-cp patches/linux/0002-rtw88.patch armbian/userpatches/kernel/archive/sunxi-7.1/rtw88.patch
 cp patches/linux/0003-st7701.patch armbian/userpatches/kernel/archive/sunxi-7.1/st7701.patch
 
 armbian_rootfs="armbian/userpatches/overlay/"
