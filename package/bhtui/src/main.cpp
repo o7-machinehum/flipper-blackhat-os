@@ -5,6 +5,9 @@
 #include <string_view>
 #include <vector>
 
+#include <sys/wait.h>
+
+#include <esc/detail/signals.hpp>
 #include <ox/core/core.hpp>
 
 #include "gameboy.h"
@@ -26,7 +29,7 @@ auto build_menu() -> std::vector<MenuItem>
         .item("DNS (resolvectl)", "resolvectl status")
         .item("Sockets", "ss -tulpen")
         .item("Ping", "ping -c 4 1.1.1.1")
-        .item("Firewall (nft)", "nft list ruleset")
+        .item("Firewall (nft)", "nft list ruleset | less")
         .end()
         .menu("Gameboy Colour", "");
     if (roms.empty()) {
@@ -42,8 +45,8 @@ auto build_menu() -> std::vector<MenuItem>
         .item("System Info", "fastfetch")
         .item("Uptime/Load", "uptime")
         .item("Kernel/OS", "uname -a")
-        .item("Kernel Logs", "dmesg")
-        .item("Top", "timeout 5 htop")
+        .item("Kernel Logs", "dmesg --color=always | less -R +G")
+        .item("Top", "htop")
         .item("Memory", "free -h")
         .item("CPU Info", "lscpu")
         .item("USB Info", "lsusb")
@@ -51,7 +54,7 @@ auto build_menu() -> std::vector<MenuItem>
         .end()
         .menu("Files", "")
         .item("List Files", "ls -lah")
-        .item("Disk Usage", "du -sh *")
+        .item("Disk Usage", "du -sh ~/* 2>/dev/null")
         .item("Filesystem Usage", "df -h")
         .end()
         .menu("Services", "")
@@ -72,24 +75,40 @@ auto build_menu() -> std::vector<MenuItem>
     return builder.build();
 }
 
+/// Runs \p command through the shell and returns its exit code.
+auto run_command(std::string const& command) -> int
+{
+    auto const status = std::system(command.c_str());
+    if (status == -1) { return 127; }
+    if (WIFEXITED(status)) { return WEXITSTATUS(status); }
+    if (WIFSIGNALED(status)) { return 128 + WTERMSIG(status); }
+    return 1;
+}
+
 auto run_menu() -> int
 {
+    // Built once so the menu keeps its position between commands.
+    auto app = MenuApp{build_menu()};
     while (true) {
-        auto menu = build_menu();
-        std::string output;
-        int code = 0;
+        auto code = 0;
         {
             auto term = ox::Terminal{};
-            auto app = MenuApp{std::move(menu), output};
             code = ox::process_events(term, app);
         }
-        if (!output.empty()) {
-            std::cout << output << '\n';
-            auto const result = std::system(output.c_str());
-            if (is_rom_command(output)) { continue; }
-            return result;
-        }
-        return code;
+
+        auto const command = app.take_command();
+        if (command.empty()) { return code; }
+
+        std::cout << "$ " << command << std::endl;
+        auto const status = run_command(command);
+
+        // Games return straight to the menu, there is no output to read.
+        if (is_rom_command(command)) { continue; }
+
+        std::cout << "\n[exit " << status << "] Press Enter to return to the menu..."
+                  << std::flush;
+        auto line = std::string{};
+        if (!std::getline(std::cin, line) || esc::sigint_flag == 1) { return status; }
     }
 }
 
