@@ -1,3 +1,4 @@
+#include <csignal>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
@@ -7,7 +8,6 @@
 
 #include <sys/wait.h>
 
-#include <esc/detail/signals.hpp>
 #include <ox/core/core.hpp>
 
 #include "gameboy.h"
@@ -105,10 +105,13 @@ auto run_menu() -> int
         // Games return straight to the menu, there is no output to read.
         if (is_rom_command(command)) { continue; }
 
+        // The menu's SIGINT handler only sets a flag and is re-installed each time
+        // the menu opens, so restore the default to let Ctrl+C quit at the prompt.
+        std::signal(SIGINT, SIG_DFL);
         std::cout << "\n[exit " << status << "] Press Enter to return to the menu..."
                   << std::flush;
         auto line = std::string{};
-        if (!std::getline(std::cin, line) || esc::sigint_flag == 1) { return status; }
+        if (!std::getline(std::cin, line)) { return status; }
     }
 }
 
