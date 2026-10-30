@@ -8,11 +8,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_subdirectory(third-party/TermOx)
 
 add_executable(bhtui
+    src/command.cpp
     src/gameboy.cpp
     src/main.cpp
     src/menu_app.cpp
     src/menu_builder.cpp
     src/menu_item.cpp
+    src/output_view.cpp
 )
 
 target_link_libraries(bhtui

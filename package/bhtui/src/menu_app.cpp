@@ -7,33 +7,21 @@
 
 #include <ox/put.hpp>
 
+#include "text.h"
+
 using namespace ox;
 
 namespace {
 
 constexpr auto no_selection = std::numeric_limits<std::size_t>::max();
 
-/// Pads or truncates \p s to exactly \p width columns, marking truncation with '~'.
-auto fit(std::string s, int width) -> std::string
-{
-    auto const w = static_cast<std::size_t>(std::max(0, width));
-    if (s.size() > w) {
-        s.resize(w);
-        if (w > 0) { s.back() = '~'; }
-    }
-    else {
-        s.resize(w, ' ');
-    }
-    return s;
-}
-
 }  // namespace
 
 MenuApp::MenuApp(std::vector<MenuItem> menu) : menu_{std::move(menu)} {}
 
-auto MenuApp::take_command() -> std::string
+auto MenuApp::take_command() -> std::optional<MenuCommand>
 {
-    return std::exchange(command_, std::string{});
+    return std::exchange(command_, std::nullopt);
 }
 
 EventResponse MenuApp::handle_key_press(Key k)
@@ -135,7 +123,7 @@ auto MenuApp::enter_selected(bool run_leaf) -> bool
     auto const& item = items[current_selection()];
     if (item.children.empty()) {
         if (!run_leaf || item.print.empty()) { return false; }
-        command_ = selected_print_path();
+        command_ = MenuCommand{selected_print_path(), item.interactive};
         return true;
     }
 

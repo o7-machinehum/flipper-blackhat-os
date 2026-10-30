@@ -1,20 +1,59 @@
 #include <csignal>
-#include <cstdlib>
 #include <filesystem>
 #include <iostream>
 #include <string>
 #include <string_view>
 #include <vector>
 
-#include <sys/wait.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <ox/core/core.hpp>
 
+#include "command.h"
 #include "gameboy.h"
 #include "menu_app.h"
 #include "menu_builder.h"
+#include "output_view.h"
 
 namespace {
+
+/// The escape library takes the terminal width from stdout but the height from stdin.
+/// The Flipper app runs `bhtui > /dev/tty1` from the serial console, where stdin is a
+/// serial port with no size (0 rows), so the menu would draw nothing. While bhtui runs,
+/// give stdin's terminal the size of the one we draw on.
+class MatchInputSize {
+   public:
+    MatchInputSize()
+    {
+        struct stat in {};
+        struct stat out {};
+        if (!::isatty(STDIN_FILENO) || !::isatty(STDOUT_FILENO) ||
+            ::fstat(STDIN_FILENO, &in) == -1 || ::fstat(STDOUT_FILENO, &out) == -1 ||
+            in.st_rdev == out.st_rdev) {
+            return;
+        }
+        auto size = winsize{};
+        if (::ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == -1 ||
+            ::ioctl(STDIN_FILENO, TIOCGWINSZ, &original_) == -1) {
+            return;
+        }
+        restore_ = ::ioctl(STDIN_FILENO, TIOCSWINSZ, &size) == 0;
+    }
+
+    ~MatchInputSize()
+    {
+        if (restore_) { ::ioctl(STDIN_FILENO, TIOCSWINSZ, &original_); }
+    }
+
+    MatchInputSize(MatchInputSize const&) = delete;
+    auto operator=(MatchInputSize const&) -> MatchInputSize& = delete;
+
+   private:
+    winsize original_{};
+    bool restore_ = false;
+};
 
 auto build_menu() -> std::vector<MenuItem>
 {
@@ -23,13 +62,13 @@ auto build_menu() -> std::vector<MenuItem>
 
     auto builder = menu_();
     builder.menu("Networking", "")
-        .item("Network Manager", "nmtui")
+        .interactive("Network Manager", "nmtui")
         .item("IP Address", "ip a")
         .item("Routes", "ip r")
         .item("DNS (resolvectl)", "resolvectl status")
         .item("Sockets", "ss -tulpen")
         .item("Ping", "ping -c 4 1.1.1.1")
-        .item("Firewall (nft)", "nft list ruleset | less")
+        .item("Firewall (nft)", "nft list ruleset")
         .end()
         .menu("Gameboy Colour", "");
     if (roms.empty()) {
@@ -37,7 +76,7 @@ auto build_menu() -> std::vector<MenuItem>
     }
     else {
         for (auto const& rom : roms) {
-            builder.item(rom.filename().string(), make_rom_command(rom));
+            builder.interactive(rom.filename().string(), make_rom_command(rom));
         }
     }
     builder.end()
@@ -45,8 +84,8 @@ auto build_menu() -> std::vector<MenuItem>
         .item("System Info", "fastfetch")
         .item("Uptime/Load", "uptime")
         .item("Kernel/OS", "uname -a")
-        .item("Kernel Logs", "dmesg --color=always | less -R +G")
-        .item("Top", "htop")
+        .item("Kernel Logs", "dmesg")
+        .interactive("Top", "htop")
         .item("Memory", "free -h")
         .item("CPU Info", "lscpu")
         .item("USB Info", "lsusb")
@@ -75,18 +114,10 @@ auto build_menu() -> std::vector<MenuItem>
     return builder.build();
 }
 
-/// Runs \p command through the shell and returns its exit code.
-auto run_command(std::string const& command) -> int
-{
-    auto const status = std::system(command.c_str());
-    if (status == -1) { return 127; }
-    if (WIFEXITED(status)) { return WEXITSTATUS(status); }
-    if (WIFSIGNALED(status)) { return 128 + WTERMSIG(status); }
-    return 1;
-}
-
 auto run_menu() -> int
 {
+    auto const match_size = MatchInputSize{};
+
     // Built once so the menu keeps its position between commands.
     auto app = MenuApp{build_menu()};
     while (true) {
@@ -97,21 +128,33 @@ auto run_menu() -> int
         }
 
         auto const command = app.take_command();
-        if (command.empty()) { return code; }
+        if (!command) { return code; }
 
-        std::cout << "$ " << command << std::endl;
-        auto const status = run_command(command);
+        // Clear first, the Linux console (the LCD) has no alternate screen, so the menu
+        // is still showing.
+        std::cout << "\x1b[H\x1b[2J$ " << command->text << std::endl;
+        auto const result = run_command(command->text, !command->interactive);
 
-        // Games return straight to the menu, there is no output to read.
-        if (is_rom_command(command)) { continue; }
+        if (result.interrupted) {
+            // The Flipper's Back button sends Ctrl+C and leaves its TUI screen, and going
+            // back in types the bhtui start command. Wait for a line so that it lands
+            // here instead of being read as menu keys.
+            // The menu's SIGINT handler only sets a flag and is re-installed each time
+            // the menu opens, so restore the default to let Ctrl+C quit at the prompt.
+            std::signal(SIGINT, SIG_DFL);
+            std::cout << "\n[exit " << result.status
+                      << "] Press Enter to return to the menu..." << std::flush;
+            auto line = std::string{};
+            if (!std::getline(std::cin, line)) { return result.status; }
+            continue;
+        }
 
-        // The menu's SIGINT handler only sets a flag and is re-installed each time
-        // the menu opens, so restore the default to let Ctrl+C quit at the prompt.
-        std::signal(SIGINT, SIG_DFL);
-        std::cout << "\n[exit " << status << "] Press Enter to return to the menu..."
-                  << std::flush;
-        auto line = std::string{};
-        if (!std::getline(std::cin, line)) { return status; }
+        // Full screen programs and games leave nothing to read.
+        if (command->interactive) { continue; }
+
+        auto view = OutputView{command->text, result.output, result.status};
+        auto term = ox::Terminal{};
+        if (auto const rc = ox::process_events(term, view); rc != 0) { return rc; }
     }
 }
 

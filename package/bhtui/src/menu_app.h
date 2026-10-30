@@ -1,11 +1,17 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <ox/core/core.hpp>
 
 #include "menu_item.h"
+
+struct MenuCommand {
+    std::string text;
+    bool interactive = false;
+};
 
 class MenuApp {
    public:
@@ -15,12 +21,12 @@ class MenuApp {
     ox::EventResponse handle_resize(ox::Area);
     ox::Terminal::Cursor handle_paint(ox::Canvas c);
 
-    /// Returns the command chosen by the user and clears it, empty if none.
-    auto take_command() -> std::string;
+    /// Returns the command chosen by the user and clears it.
+    auto take_command() -> std::optional<MenuCommand>;
 
    private:
     std::vector<MenuItem> menu_;
-    std::string command_;
+    std::optional<MenuCommand> command_;
 
     // Indices of the submenus entered, and the highlighted row at each level.
     // Invariant: selections_.size() == path_.size() + 1
