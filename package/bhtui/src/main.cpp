@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <csignal>
 #include <filesystem>
 #include <iostream>
@@ -55,13 +56,50 @@ class MatchInputSize {
     bool restore_ = false;
 };
 
+/// The user's payload scripts on the boot partition, the same folder the Flipper app's
+/// "Scan for Scripts" lists. Backup and temp copies are skipped.
+auto find_scripts(std::filesystem::path const& dir) -> std::vector<std::filesystem::path>
+{
+    auto scripts = std::vector<std::filesystem::path>{};
+    auto ec = std::error_code{};
+    for (auto const& entry : std::filesystem::directory_iterator{dir, ec}) {
+        if (!entry.is_regular_file(ec)) { continue; }
+        auto const name = entry.path().filename().string();
+        auto const ext = entry.path().extension().string();
+        if (name.empty() || name.front() == '.' || name.back() == '~' || ext == ".bak" ||
+            ext == ".orig" || ext == ".tmp" || ext == ".swp" ||
+            name.find(".bak") != std::string::npos) {
+            continue;
+        }
+        scripts.push_back(entry.path());
+    }
+    std::sort(scripts.begin(), scripts.end());
+    return scripts;
+}
+
+/// Runs a script in the foreground so the Flipper's arrows, OK and Back reach it, then
+/// waits for OK so its output stays on the LCD.
+auto make_script_command(std::filesystem::path const& script) -> std::string
+{
+    auto const interpreter = script.extension() == ".py" ? "python3" : "bash";
+    return std::string{"cd '"} + script.parent_path().string() + "' && " + interpreter +
+           " '" + script.string() + "'; printf '\\n[OK = back to menu]'; read _";
+}
+
 auto build_menu() -> std::vector<MenuItem>
 {
     std::filesystem::create_directories(rom_directory());
     auto const roms = find_roms(rom_directory());
+    auto const scripts = find_scripts("/boot/bh/scripts");
 
     auto builder = menu_();
-    builder.menu("Networking", "")
+    builder.menu("Blackhat", "").interactive("Blackhat Menu", "blackhat-menu");
+    for (auto const& script : scripts) {
+        if (script.filename() == "blackhat-menu") { continue; }
+        builder.interactive(script.filename().string(), make_script_command(script));
+    }
+    builder.end()
+        .menu("Networking", "")
         .interactive("Network Manager", "nmtui")
         .item("IP Address", "ip a")
         .item("Routes", "ip r")
