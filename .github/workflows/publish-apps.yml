@@ -21,42 +21,30 @@ jobs:
           ref: master
           submodules: recursive
 
-      - name: Install ARM build dependencies
+      - name: Set up ARM emulation
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm
+
+      - name: Build and check bhtui against Kali ARM libraries
         run: |
-          sudo dpkg --add-architecture armhf
-          sudo tee /etc/apt/sources.list.d/ubuntu.sources >/dev/null <<'EOF'
-          Types: deb
-          URIs: http://archive.ubuntu.com/ubuntu
-          Suites: noble noble-updates noble-backports
-          Components: main universe restricted multiverse
-          Architectures: amd64
-          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          docker run --rm --platform linux/arm/v7 \
+            --volume "$GITHUB_WORKSPACE:/src" --workdir /src \
+            --env DEBIAN_FRONTEND=noninteractive \
+            kalilinux/kali-rolling:latest bash -euo pipefail -c '
+              test "$(dpkg --print-architecture)" = armhf
+              apt-get update
+              apt-get install -y --no-install-recommends \
+                build-essential cmake git ca-certificates libicu-dev
 
-          Types: deb
-          URIs: http://security.ubuntu.com/ubuntu
-          Suites: noble-security
-          Components: main universe restricted multiverse
-          Architectures: amd64
-          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+              cmake -S package/bhtui -B package/bhtui/build \
+                -DCMAKE_BUILD_TYPE=Release
+              cmake --build package/bhtui/build --target bhtui --parallel 2
 
-          Types: deb
-          URIs: http://ports.ubuntu.com/ubuntu-ports
-          Suites: noble noble-updates noble-backports noble-security
-          Components: main universe restricted multiverse
-          Architectures: armhf
-          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
-          EOF
-          sudo apt-get update
-          sudo apt-get install -y g++-arm-linux-gnueabihf libicu-dev:armhf
-
-      - name: Build bhtui
-        run: |
-          cmake -S package/bhtui -B package/bhtui/build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_SYSTEM_NAME=Linux \
-            -DCMAKE_SYSTEM_PROCESSOR=arm \
-            -DCMAKE_CXX_COMPILER=arm-linux-gnueabihf-g++
-          cmake --build package/bhtui/build --target bhtui --parallel
+              ldd package/bhtui/build/bhtui
+              # An unsupported option prints usage and exits 2 without opening the TUI.
+              package/bhtui/build/bhtui --help || test "$?" -eq 2
+            '
 
       - name: Package bh and bhtui
         run: |
