@@ -21,3 +21,26 @@ cd buildroot
 make BR2_EXTERNAL=$PWD/../ flipper_blackhat_a33_defconfig
 make
 ```
+
+## Build bhtui
+The armbian build steps above will do this, but if you don't want to build the entire OS, you can build `bhtui` with docker.
+
+```bash
+# Only needs to be done once per boot.
+sudo systemctl start docker
+docker info
+
+# Enable ARM emulation
+docker run --privileged --rm tonistiigi/binfmt --install arm
+
+# Update subs
+git submodule update --init --recursive package/bhtui/third-party/TermOx
+
+# Build the binary
+./scripts/build-bhtui.sh
+
+# Files here
+# package/bhtui/build/
+```
+
+
