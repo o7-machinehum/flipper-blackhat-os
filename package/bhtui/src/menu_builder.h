@@ -12,6 +12,7 @@ class MenuBuilder {
     MenuBuilder& menu(std::string display, std::string print);
     MenuBuilder& submenu(std::string display, std::string print);
     MenuBuilder& item(std::string display, std::string print);
+    MenuBuilder& interactive(std::string display, std::string print);
     MenuBuilder& end();
 
     auto build() -> std::vector<MenuItem>;

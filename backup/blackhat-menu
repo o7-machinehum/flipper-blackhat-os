@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+# Blackhat menu. Works from the Flipper (arrows move, OK runs, Back = Ctrl-C)
+# and from a keyboard (arrows, Enter, or type the item number).
+
+ITEMS=( "Scan local network" "Audit one device" "Compare net changes" "Passive Wi-Fi watch"
+        "DNS traffic watch" "Show interfaces" "Recent reports" "Monitor ON (attack)"
+        "Monitor OFF (normal)" "New-device alert" "Deauth detector" "Harden check"
+        "SSID art prank" "Rickroll (my AP)" "COLOR DASHBOARD" "Exit" )
+N=${#ITEMS[@]}
+SEL=0
+# Several helper scripts live only here, not in /usr/local/bin.
+export PATH="$PATH:/boot/bh/scripts"
+INTR=0
+# A handled (not ignored) trap: children still get the default Ctrl-C behaviour,
+# so Back stops a running tool and returns here instead of killing the menu.
+trap 'INTR=1' INT
+
+KEY=""
+readkey() {
+    local k="" rest=""
+    # bash restarts `read` after a trapped SIGINT (the Flipper's Back), and `read -n`
+    # turns signals back on itself, so wait in short slices and check for Back between.
+    while ! IFS= read -rsn1 -t 0.3 k; do
+        if ((INTR)); then KEY=$'\x03'; return; fi
+    done
+    if [[ $k == $'\e' ]]; then
+        IFS= read -rsn2 -t 0.2 rest
+        k+=$rest
+    fi
+    KEY=$k
+    # If the terminal is in raw mode, the Flipper's Back arrives as a plain
+    # Ctrl-C byte instead of a signal; treat it the same way.
+    [[ $k == $'\x03' ]] && INTR=1
+}
+
+is_up()    { [[ $KEY == $'\e[A' || $KEY == $'\eOA' ]]; }
+is_down()  { [[ $KEY == $'\e[B' || $KEY == $'\eOB' ]]; }
+is_right() { [[ $KEY == $'\e[C' || $KEY == $'\eOC' ]]; }
+is_left()  { [[ $KEY == $'\e[D' || $KEY == $'\eOD' ]]; }
+is_ok()    { [[ -z $KEY || $KEY == $'\r' || $KEY == $'\n' ]]; }
+
+draw() {
+    printf '\e[H\e[2J'
+    echo "===== FLIPPER BLACKHAT ====="
+    local r c i label line
+    for ((r = 0; r < (N + 1) / 2; r++)); do
+        line=""
+        for c in 0 1; do
+            i=$((r * 2 + c))
+            ((i < N)) || continue
+            label=$(printf '%2d) %-22s' $((i + 1)) "${ITEMS[i]}")
+            if ((i == SEL)); then line+=$'\e[7m'"$label"$'\e[0m'; else line+="$label"; fi
+            ((c == 0)) && line+=" "
+        done
+        printf '%s\n' "$line"
+    done
+    echo "----------------------------------------------"
+    echo "Arrows move   OK runs   Back exits"
+}
+
+pause() {
+    echo
+    echo "OK = back to menu"
+    INTR=0
+    readkey
+    INTR=0
+}
+
+# Arrow-key picker for "Audit one device": lists devices seen on the network.
+TARGET=""
+pick_target() {
+    local -a ips
+    mapfile -t ips < <(ip -4 neigh show 2>/dev/null |
+        awk '$1 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && $NF != "FAILED" && $NF != "INCOMPLETE" {print $1}' |
+        sort -uV | head -30)
+    ips+=("Type an IP (keyboard)")
+    local s=0 i
+    while true; do
+        printf '\e[H\e[2J'
+        echo "Audit which device?  (OK picks, Back cancels)"
+        ((${#ips[@]} == 1)) && echo "No devices seen yet - run 1) Scan local network first."
+        echo
+        for i in "${!ips[@]}"; do
+            if ((i == s)); then printf '\e[7m %s \e[0m\n' "${ips[i]}"; else printf ' %s\n' "${ips[i]}"; fi
+        done
+        INTR=0
+        readkey
+        ((INTR)) && { INTR=0; return 1; }
+        if is_up; then ((s > 0)) && ((s--))
+        elif is_down; then ((s < ${#ips[@]} - 1)) && ((s++))
+        elif is_ok; then
+            if ((s == ${#ips[@]} - 1)); then
+                read -rp "Target IP: " TARGET || return 1
+                [[ -n $TARGET ]] || return 1
+            else
+                TARGET=${ips[s]}
+            fi
+            return 0
+        fi
+    done
+}
+
+run() {
+    printf '\e[H\e[2J'
+    case "$1" in
+        1) lan-scout ;;
+        2) pick_target || return; printf '\e[H\e[2J'; device-audit "$TARGET" ;;
+        3) network-watch ;;
+        4) # wifi-watch is not on V1.4: use airodump-ng in monitor mode, else a normal scan.
+           if iw dev wlan1 info 2>/dev/null | grep -q 'type monitor'; then
+               echo "Back stops the watch."; airodump-ng wlan1
+           else
+               echo "wlan1 is not in monitor mode (use 8 first). Normal scan:"
+               nmcli radio wifi on; sleep 2
+               nmcli -f SSID,BSSID,CHAN,SIGNAL,SECURITY dev wifi list ifname wlan1 --rescan yes
+           fi ;;
+        5) dns-watch wlan0 ;;
+        6) ip -br addr; echo; iw dev ;;
+        7) ls -lt "$HOME/blackhat-reports" | head -20 ;;
+        8) # blackhat-setup.sh is not on V1.4: put wlan1 into monitor mode directly.
+           nmcli dev set wlan1 managed no 2>/dev/null
+           ip link set wlan1 down && iw dev wlan1 set type monitor && ip link set wlan1 up &&
+               echo "wlan1 is now in monitor mode." || echo "Could not switch wlan1 to monitor mode." ;;
+        9) ip link set wlan1 down; iw dev wlan1 set type managed 2>/dev/null; ip link set wlan1 up
+           nmcli dev set wlan1 managed yes 2>/dev/null; echo "wlan1 back to managed." ;;
+        10) net-watch-alert ;;
+        11) deauth-detect wlan1 60 ;;
+        12) harden-check ;;
+        13) prank-ssid-art wlan1 ;;
+        14) prank-rickroll ;;
+        15) /boot/bh/scripts/run-dash ;;
+        16) printf '\e[H\e[2J'; exit 0 ;;
+        *) return ;;
+    esac
+    pause
+}
+
+while true; do
+    draw
+    INTR=0
+    readkey
+    if ((INTR)); then printf '\e[H\e[2J'; exit 0; fi   # Back on the main menu exits
+    if is_up; then ((SEL >= 2)) && ((SEL -= 2))
+    elif is_down; then ((SEL + 2 < N)) && ((SEL += 2))
+    elif is_left; then ((SEL % 2 == 1)) && ((SEL--))
+    elif is_right; then ((SEL % 2 == 0 && SEL + 1 < N)) && ((SEL++))
+    elif is_ok; then run $((SEL + 1))
+    elif [[ $KEY == [0-9] ]]; then
+        num=$KEY more=""
+        IFS= read -rsn1 -t 1 more && [[ $more == [0-9] ]] && num+=$more
+        if ((num >= 1 && num <= N)); then SEL=$((num - 1)); run "$num"; fi
+    elif [[ $KEY == q ]]; then printf '\e[H\e[2J'; exit 0
+    fi
+done

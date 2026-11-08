@@ -376,7 +376,10 @@ script() {
     subcommand="$1"; shift
     case "$subcommand" in
         scan)
-            ls -1 --color=never /mnt/scripts/
+            # Only list real scripts: drop hidden files and editor/backup
+            # leftovers (*.bak, *.bak.<ts>, *~, *.swp, *.tmp, *.orig, *.old)
+            # so the Flipper "Scan for Scripts" menu stays clean.
+            ls -1 --color=never /mnt/scripts/ | grep -vE '^\.|~$|\.(bak|tmp|swp|swo|orig|old)([.][0-9]+)?$'
             ;;
         run)
             "/mnt/scripts/$1"

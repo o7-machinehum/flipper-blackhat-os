@@ -30,6 +30,13 @@ MenuBuilder& MenuBuilder::item(std::string display, std::string print)
     return *this;
 }
 
+MenuBuilder& MenuBuilder::interactive(std::string display, std::string print)
+{
+    if (current_ == nullptr) { current_ = &root_; }
+    current_->push_back(MenuItem{std::move(display), std::move(print), {}, true});
+    return *this;
+}
+
 MenuBuilder& MenuBuilder::end()
 {
     if (stack_.empty()) {

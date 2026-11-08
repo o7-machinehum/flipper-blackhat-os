@@ -1,0 +1,2 @@
+# Scripts here run on the Black Hat (Linux): keep LF line endings on Windows checkouts.
+* text eol=lf
