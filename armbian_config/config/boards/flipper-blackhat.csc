@@ -7,6 +7,11 @@ HAS_VIDEO_OUTPUT="no"
 # U-Boot
 BOOTCONFIG="flipper_blackhat_defconfig"
 
+function post_family_config__flipper_blackhat_autoboot() {
+    # Override the sunxi family delay so UART input cannot interrupt autoboot.
+    declare -g BOOTDELAY=-2
+}
+
 # Kernel DTB that should be used by default
 BOOT_FDT_FILE="sun8i-a33-flipper-blackhat.dtb"
 
