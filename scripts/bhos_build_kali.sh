@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-cd "$(dirname "$0")"
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
 os_release="kali-rolling"
 kali_suite="kali-rolling"

@@ -8,7 +8,8 @@ There are two possible builds in this repository, find releases [here](https://g
 Armbian is the suggested operating system when using the Flipper Blackhat with the Flipper Zero and the Blackpants.
 
 ``` bash
-./bhos_build_kali.sh
+./scripts/clean.sh  # For a full clean
+./scripts/bhos_build_kali.sh
 ```
 Images are found in `armbian/output/images/`
 
