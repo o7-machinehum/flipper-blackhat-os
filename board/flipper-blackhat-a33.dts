@@ -41,6 +41,17 @@
     };
 };
 
+&cpu0_opp_table {
+    /* The CPU core supply is fixed at 1.1 V. */
+    opp-912000000 {
+        status = "disabled";
+    };
+
+    opp-1008000000 {
+        status = "disabled";
+    };
+};
+
 &pio {
     pwm1_pin: pwm1-pin {
         pins = "PH1";

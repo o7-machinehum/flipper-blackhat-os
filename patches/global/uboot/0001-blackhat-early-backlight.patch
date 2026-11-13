@@ -1,0 +1,90 @@
+diff --git a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
+--- a/arch/arm/mach-sunxi/Kconfig
++++ b/arch/arm/mach-sunxi/Kconfig
+@@ -875,6 +875,14 @@
+ 	Set the reset pin for the LCD panel. This takes a string in the format
+ 	understood by sunxi_name_to_gpio, e.g. PH1 for pin 1 of port H.
+ 
++config SUNXI_BLACKHAT_BACKLIGHT
++	bool "Initialize the Blackhat backlight in SPL"
++	depends on MACH_SUN8I_A33 && SPL
++	help
++	  Drive the Blackhat's active-high PH1 backlight using PWM1 at
++	  20 kHz and 10 percent duty before DRAM initialization. Keep this
++	  PWM running until the Linux backlight driver takes over.
++
+ config VIDEO_LCD_BL_EN
+ 	string "LCD panel backlight enable pin"
+ 	depends on VIDEO_SUNXI
+diff --git a/arch/arm/mach-sunxi/board.c b/arch/arm/mach-sunxi/board.c
+--- a/arch/arm/mach-sunxi/board.c
++++ b/arch/arm/mach-sunxi/board.c
+@@ -21,6 +21,7 @@
+ #include <asm/gpio.h>
+ #include <asm/io.h>
+ #include <asm/arch/clock.h>
++#include <asm/arch/pwm.h>
+ #include <asm/arch/spl.h>
+ #include <asm/arch/sys_proto.h>
+ #include <asm/arch/timer.h>
+@@ -434,6 +435,27 @@
+ 	return result;
+ }
+ 
++#ifdef CONFIG_SUNXI_BLACKHAT_BACKLIGHT
++static void blackhat_backlight_init(void)
++{
++	/* Override the board's pull-up before configuring active-high PWM1. */
++	gpio_set_value(SUNXI_GPH(1), 0);
++	gpio_direction_output(SUNXI_GPH(1), 0);
++
++	/* Disable PWM1 and its clock; leave PWM0 untouched. */
++	clrbits_le32(SUNXI_PWM_CTRL_REG, GENMASK(24, 15));
++
++	/* OSC24M / 1200 = 20 kHz, with 120 active ticks for 10% duty. */
++	writel(SUNXI_PWM_CH0_PERIOD_PRD(1199) |
++	       SUNXI_PWM_CH0_PERIOD_DUTY(120), SUNXI_PWM_BASE + 8);
++	setbits_le32(SUNXI_PWM_CTRL_REG,
++		    (SUNXI_PWM_CTRL_PRESCALE0(0xf) |
++		     SUNXI_PWM_CTRL_ENABLE0 |
++		     SUNXI_PWM_CTRL_POLARITY0(1)) << 15);
++	sunxi_gpio_set_cfgpin(SUNXI_GPH(1), SUN8I_GPH_PWM);
++}
++#endif
++
+ void board_init_f(ulong dummy)
+ {
+ 	sunxi_sram_init();
+@@ -446,6 +468,9 @@
+ 	clock_init();
+ 	timer_init();
+ 	gpio_init();
++#ifdef CONFIG_SUNXI_BLACKHAT_BACKLIGHT
++	blackhat_backlight_init();
++#endif
+ 
+ 	spl_init();
+ 	preloader_console_init();
+diff --git a/drivers/video/sunxi/sunxi_display.c b/drivers/video/sunxi/sunxi_display.c
+--- a/drivers/video/sunxi/sunxi_display.c
++++ b/drivers/video/sunxi/sunxi_display.c
+@@ -572,7 +572,7 @@
+ 	}
+ 
+ 	pin = sunxi_name_to_gpio(CONFIG_VIDEO_LCD_BL_PWM);
+-	if (pin >= 0) {
++	if (pin >= 0 && !IS_ENABLED(CONFIG_SUNXI_BLACKHAT_BACKLIGHT)) {
+ 		gpio_request(pin, "lcd_backlight_pwm");
+ 		gpio_direction_output(pin, PWM_OFF);
+ 	}
+@@ -598,6 +598,10 @@
+ static void sunxi_lcdc_backlight_enable(void)
+ {
+ 	int pin;
++
++	/* SPL already drives the Blackhat's PWM1 at 10% duty. */
++	if (IS_ENABLED(CONFIG_SUNXI_BLACKHAT_BACKLIGHT))
++		return;
+ 
+ 	/*
+ 	 * We want to have scanned out at least one frame before enabling the

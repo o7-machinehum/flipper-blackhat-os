@@ -10,6 +10,8 @@ BOOTCONFIG="flipper_blackhat_defconfig"
 function post_family_config__flipper_blackhat_autoboot() {
     # Override the sunxi family delay so UART input cannot interrupt autoboot.
     declare -g BOOTDELAY=-2
+    # Apply the CPU limit after the sunxi family defaults have been loaded.
+    declare -g CPUMAX=816000
 }
 
 # Kernel DTB that should be used by default

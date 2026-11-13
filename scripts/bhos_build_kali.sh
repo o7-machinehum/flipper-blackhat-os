@@ -128,6 +128,7 @@ cd armbian
     BOARD=flipper-blackhat \
     BRANCH=edge \
     BUILD_MINIMAL=no \
+    CLEAN_LEVEL=images,cache \
     KERNEL_CONFIGURE=no \
     KEEP_ORIGINAL_OS_RELEASE=yes \
     KALI_SUITE=${kali_suite} \

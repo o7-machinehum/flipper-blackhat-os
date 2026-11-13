@@ -15,7 +15,7 @@ new file mode 100644
 index 000000000000..d66fff6bb526
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/sun8i-a33-flipper-blackhat.dts
-@@ -0,0 +1,201 @@
+@@ -0,0 +1,212 @@
 +/dts-v1/;
 +#include "sun8i-a33.dtsi"
 +#include "sunxi-common-regulators.dtsi"
@@ -56,6 +56,17 @@ index 000000000000..d66fff6bb526
 +    wifi_pwrseq: wifi-pwrseq {
 +        compatible = "mmc-pwrseq-simple";
 +        reset-gpios = <&pio 6 12 GPIO_ACTIVE_LOW>; /* PG12 */
++    };
++};
++
++&cpu0_opp_table {
++    /* The CPU core supply is fixed at 1.1 V. */
++    opp-912000000 {
++        status = "disabled";
++    };
++
++    opp-1008000000 {
++        status = "disabled";
 +    };
 +};
 +
