@@ -12,8 +12,8 @@ mkdir -p /boot/bh/
 
 # /tmp/overlay contains the tree from userpatches/overlay
 if [ -d /tmp/overlay ]; then
-    # Copy everything over the rootfs (preserving perms)
-    cp -a /tmp/overlay/* /
+    # Keep permissions without copying the build user's ownership into the image.
+    cp -a --no-preserve=ownership /tmp/overlay/. /
 fi
 
 systemctl enable bh-boot

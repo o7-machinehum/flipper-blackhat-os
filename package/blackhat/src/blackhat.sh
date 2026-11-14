@@ -135,22 +135,23 @@ connect_wifi() {
 }
 
 connect_wifi_nm() {
+    local out rc
     INET_NIC=$1
-    nmcli radio wifi on
+    nmcli radio wifi on || return "$?"
     if [[ -z ${PASS:-} ]]; then
         out="$(nmcli dev wifi connect "$SSID" ifname "$INET_NIC" 2>&1)"
         rc=$?
-        echo "$out" | grep -v "property is missing"
     else
         out="$(nmcli dev wifi connect "$SSID" password "$PASS" \
             ifname "$INET_NIC" 2>&1)"
         rc=$?
-        echo "$out" | grep -v "property is missing"
     fi
+    printf '%s\n' "$out"
 
     if [[ $rc -eq 0 ]]; then
         echo $INET_NIC Connected!
     fi
+    return "$rc"
 }
 
 connect_wifi_wpa() {
@@ -418,13 +419,21 @@ bh_kismet() {
 
 ssh() {
     if [ "$1" = "stop" ]; then
-        killall dropbear
+        if [[ "$armbian" == true ]]; then
+            systemctl stop ssh || return "$?"
+        else
+            killall dropbear || return "$?"
+        fi
         echo "SSH Server Stopped"
-        exit
+        return 0
     fi
 
-    mkdir /var/run/dropbear 2>/dev/null
-    /usr/sbin/dropbear -R
+    if [[ "$armbian" == true ]]; then
+        systemctl start ssh || return "$?"
+    else
+        mkdir /var/run/dropbear 2>/dev/null
+        /usr/sbin/dropbear -R || return "$?"
+    fi
     echo "SSH Server Started"
     bh wifi ip
 }

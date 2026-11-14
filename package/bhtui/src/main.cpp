@@ -93,9 +93,15 @@ auto build_menu() -> std::vector<MenuItem>
     auto const scripts = find_scripts("/boot/bh/scripts");
 
     auto builder = menu_();
-    builder.menu("Blackhat", "").interactive("Blackhat Menu", "blackhat-menu");
+    builder.menu("Blackhat", "")
+        .submenu("Blackhat Menu", "")
+        .item("Wi-Fi Interfaces", "bh wifi dev")
+        .item("IP Addresses", "bh wifi ip")
+        .interactive("Network Manager", "nmtui")
+        .item("Connection Test", "bh test_inet")
+        .item("Command Help", "bh")
+        .end();
     for (auto const& script : scripts) {
-        if (script.filename() == "blackhat-menu") { continue; }
         builder.interactive(script.filename().string(), make_script_command(script));
     }
     builder.end()
